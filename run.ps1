@@ -10,10 +10,15 @@ Write-Host "+------------------------------------------+" -ForegroundColor Cyan
 Write-Host ""
 
 # Check Rust
+$cargoPath = "$env:USERPROFILE\.cargo\bin"
 if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
-    Write-Host "[Error] Rust not found. Install from: https://rustup.rs" -ForegroundColor Red
-    Write-Host "   Run: winget install Rustlang.Rustup" -ForegroundColor Yellow
-    exit 1
+    if (Test-Path "$cargoPath\cargo.exe") {
+        $env:PATH = "$cargoPath;$env:PATH"
+    } else {
+        Write-Host "[Error] Rust not found. Install from: https://rustup.rs" -ForegroundColor Red
+        Write-Host "   Run: winget install Rustlang.Rustup" -ForegroundColor Yellow
+        exit 1
+    }
 }
 
 Write-Host "[OK] Rust found: $(cargo --version)" -ForegroundColor Green
