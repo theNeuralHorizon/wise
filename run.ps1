@@ -37,21 +37,59 @@ if ($LASTEXITCODE -ne 0) {
     Pop-Location
     exit 1
 }
-Pop-Location
-
 Write-Host "✅ Build complete!" -ForegroundColor Green
 Write-Host ""
-Write-Host "🚀 Starting server on http://localhost:8081" -ForegroundColor Cyan
-Write-Host "   Open c:\wise\index.html in your browser" -ForegroundColor Gray
-Write-Host "   Status indicator will turn GREEN when connected" -ForegroundColor Gray
+Write-Host "🚀 Starting services..." -ForegroundColor Cyan
+
+$processes = @()
+
+# 1. Python AI Microservice
+if (Test-Path ".\ai_service\main.py") {
+    Write-Host "   🤖 Starting Python AI Service on http://localhost:5000..." -ForegroundColor Gray
+    $p1 = Start-Process "python" -ArgumentList "main.py" -WorkingDirectory ".\ai_service" -PassThru -NoNewWindow
+    $processes += $p1
+}
+
+# 2. Rust Backend Server
+Write-Host "   🦀 Starting Rust backend server on http://localhost:8081..." -ForegroundColor Gray
+$p2 = Start-Process ".\backend\target\release\wise-server.exe" -WorkingDirectory ".\backend" -PassThru -NoNewWindow
+$processes += $p2
+
+# 3. Vite Dev Server
+if (Test-Path ".\frontend") {
+    Write-Host "   💻 Starting Vite dev server on http://localhost:5173..." -ForegroundColor Gray
+    $p3 = Start-Process "cmd.exe" -ArgumentList "/c npm run dev" -WorkingDirectory ".\frontend" -PassThru -NoNewWindow
+    $processes += $p3
+}
+
 Write-Host ""
-Write-Host "   Press Ctrl+C to stop" -ForegroundColor DarkGray
+Write-Host "🌐 Opening application at http://localhost:5173..." -ForegroundColor Green
+Start-Sleep -Seconds 2 # Give Vite a moment to initialize
+Start-Process "http://localhost:5173"
+
+Write-Host ""
+Write-Host "✨ All services are running!" -ForegroundColor Green
+Write-Host "   Press Ctrl+C in this console to stop all services." -ForegroundColor Yellow
 Write-Host ""
 
-# Open browser first
-Start-Process "c:\wise\index.html"
-
-# Start the server
-Push-Location backend
-.\target\release\wise-server.exe
-Pop-Location
+try {
+    while ($true) {
+        # Check if any process has crashed/exited
+        foreach ($p in $processes) {
+            if ($p -and $p.HasExited) {
+                Write-Host "⚠️ Warning: A service has stopped (Exit Code: $($p.ExitCode))." -ForegroundColor Red
+            }
+        }
+        Start-Sleep -Seconds 2
+    }
+}
+finally {
+    Write-Host "`n🛑 Stopping all services..." -ForegroundColor Red
+    foreach ($p in $processes) {
+        if ($p -and -not $p.HasExited) {
+            Write-Host "   Killing process ID $($p.Id)..." -ForegroundColor Gray
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
+    Write-Host "👋 All services stopped successfully!" -ForegroundColor Green
+}
