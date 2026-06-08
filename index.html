@@ -1,0 +1,2612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Wise — Split Smart, Settle Instantly</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+<style>
+/* ── RESET & BASE ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #0A0A0F;
+  --bg2:      #111118;
+  --surface:  #16161F;
+  --surface2: #1E1E2A;
+  --border:   rgba(255,255,255,0.07);
+  --border2:  rgba(255,255,255,0.12);
+  --accent:   #7C6FFF;
+  --accent2:  #A78BFA;
+  --green:    #22D3A3;
+  --green2:   #0D9488;
+  --red:      #F87171;
+  --text:     #F0F0FF;
+  --text2:    #9090B0;
+  --text3:    #5A5A78;
+  --gold:     #F59E0B;
+  --upi:      #00B15A;
+  --r:        20px;
+  --r2:       14px;
+  --shadow:   0 20px 60px rgba(0,0,0,0.6);
+}
+html, body {
+  height: 100%; width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── PHONE SHELL (desktop) ─────────────────────────────────────────────────── */
+.shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,111,255,0.15) 0%, transparent 70%),
+              radial-gradient(ellipse 60% 40% at 100% 100%, rgba(34,211,163,0.08) 0%, transparent 60%),
+              var(--bg);
+}
+
+.phone {
+  position: relative;
+  width: 390px;
+  height: 844px;
+  background: var(--bg2);
+  border-radius: 52px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08),
+              0 0 0 10px #0A0A0F,
+              0 0 0 11px rgba(255,255,255,0.06),
+              var(--shadow);
+}
+
+/* Dynamic Island */
+.island {
+  position: absolute;
+  top: 13px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 34px;
+  background: #000;
+  border-radius: 20px;
+  z-index: 999;
+}
+
+/* Status bar */
+.status {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 59px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 28px 8px;
+  z-index: 998;
+  pointer-events: none;
+}
+.status-time { font-size: 15px; font-weight: 600; }
+.status-icons { display: flex; gap: 6px; align-items: center; }
+.status-icons svg { opacity: 0.9; }
+
+/* Screen router */
+.screens { 
+  position: absolute; 
+  inset: 0; 
+  overflow: hidden;
+}
+.screen {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(30px);
+  transition: opacity 0.35s cubic-bezier(.4,0,.2,1), transform 0.35s cubic-bezier(.4,0,.2,1);
+}
+.screen::-webkit-scrollbar { display: none; }
+.screen.active {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateX(0);
+}
+.screen.slide-left {
+  opacity: 0;
+  transform: translateX(-30px);
+}
+
+/* ── COMPONENTS ───────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: all 0.2s cubic-bezier(.4,0,.2,1);
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(0.96); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #9B87FF);
+  color: white;
+  border-radius: 18px;
+  padding: 18px 24px;
+  font-size: 16px;
+  width: 100%;
+  box-shadow: 0 8px 30px rgba(124,111,255,0.35);
+}
+.btn-primary:hover { box-shadow: 0 12px 40px rgba(124,111,255,0.5); }
+
+.btn-secondary {
+  background: var(--surface2);
+  color: var(--text2);
+  border-radius: 14px;
+  padding: 14px 20px;
+  font-size: 14px;
+  border: 1px solid var(--border);
+}
+.btn-green {
+  background: linear-gradient(135deg, #22D3A3, #0D9488);
+  color: white;
+  border-radius: 18px;
+  padding: 18px 24px;
+  font-size: 16px;
+  width: 100%;
+  box-shadow: 0 8px 30px rgba(34,211,163,0.3);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── HOME SCREEN ──────────────────────────────────────────────────────────── */
+#home { background: var(--bg2); }
+.home-bg {
+  position: absolute;
+  top: -100px;
+  left: -100px;
+  right: -100px;
+  height: 400px;
+  background: radial-gradient(ellipse at 50% 30%, rgba(124,111,255,0.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+.home-pad { padding: 59px 22px 30px; }
+.home-greeting { font-size: 13px; color: var(--text3); margin-bottom: 4px; }
+.home-name { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+
+.balance-card {
+  margin: 20px 0;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(124,111,255,0.2), rgba(167,139,250,0.1));
+  border: 1px solid rgba(124,111,255,0.25);
+  border-radius: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.balance-card::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 140px; height: 140px;
+  background: radial-gradient(circle, rgba(124,111,255,0.3), transparent 70%);
+  border-radius: 50%;
+}
+.balance-label { font-size: 13px; color: var(--text2); margin-bottom: 4px; }
+.balance-amount { font-size: 38px; font-weight: 800; letter-spacing: -1.5px; }
+.balance-amount span { color: var(--green); }
+.balance-sub { font-size: 12px; color: var(--text3); margin-top: 6px; }
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.qa-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+}
+.qa-btn:active { transform: scale(0.97); background: var(--surface2); }
+.qa-icon {
+  width: 42px; height: 42px;
+  border-radius: 13px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+.qa-icon.purple { background: rgba(124,111,255,0.15); }
+.qa-icon.green { background: rgba(34,211,163,0.12); }
+.qa-icon.gold { background: rgba(245,158,11,0.12); }
+.qa-icon.pink { background: rgba(248,113,113,0.12); }
+.qa-label { font-size: 13px; font-weight: 600; color: var(--text); }
+.qa-sub { font-size: 11px; color: var(--text3); }
+
+.section-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.section-see { font-size: 13px; color: var(--accent2); font-weight: 500; }
+
+.split-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.split-item:last-child { border-bottom: none; }
+.split-avatar {
+  width: 44px; height: 44px;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.split-info { flex: 1; min-width: 0; }
+.split-name { font-size: 14px; font-weight: 600; }
+.split-date { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.split-amount { font-size: 15px; font-weight: 700; }
+.split-amount.owe { color: var(--red); }
+.split-amount.owed { color: var(--green); }
+
+/* ── SCAN SCREEN ──────────────────────────────────────────────────────────── */
+#scan { background: #000; }
+.scan-header {
+  position: absolute;
+  top: 59px;
+  left: 0; right: 0;
+  padding: 12px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+}
+.back-btn {
+  width: 38px; height: 38px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s;
+}
+.back-btn:active { transform: scale(0.93); }
+.scan-title { font-size: 16px; font-weight: 700; }
+
+.camera-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #111;
+}
+.receipt-preview {
+  width: 280px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 0 0 3px rgba(124,111,255,0.6), 0 20px 60px rgba(0,0,0,0.8);
+  animation: float 3s ease-in-out infinite;
+}
+.receipt-preview img { width: 100%; display: block; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-10px) rotate(1deg); }
+}
+
+.scan-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.scan-corner {
+  position: absolute;
+  width: 28px; height: 28px;
+  border-color: #7C6FFF;
+  border-style: solid;
+  border-width: 0;
+}
+.scan-corner.tl { top: 160px; left: 42px; border-top-width: 3px; border-left-width: 3px; border-radius: 6px 0 0 0; }
+.scan-corner.tr { top: 160px; right: 42px; border-top-width: 3px; border-right-width: 3px; border-radius: 0 6px 0 0; }
+.scan-corner.bl { bottom: 220px; left: 42px; border-bottom-width: 3px; border-left-width: 3px; border-radius: 0 0 0 6px; }
+.scan-corner.br { bottom: 220px; right: 42px; border-bottom-width: 3px; border-right-width: 3px; border-radius: 0 0 6px 0; }
+.scan-line {
+  position: absolute;
+  left: 42px; right: 42px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #7C6FFF, transparent);
+  top: 160px;
+  animation: scanMove 2s ease-in-out infinite;
+}
+@keyframes scanMove {
+  0% { top: 160px; }
+  50% { top: calc(100% - 220px); }
+  100% { top: 160px; }
+}
+
+.scan-bottom {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 20px 22px 40px;
+  background: linear-gradient(to top, #000 60%, transparent);
+}
+.scan-hint {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 20px;
+}
+.scan-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.shutter {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  border: 3px solid white;
+  background: rgba(255,255,255,0.15);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  margin: 0 auto;
+}
+.shutter:active { transform: scale(0.9); background: rgba(255,255,255,0.3); }
+.shutter-inner {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: white;
+}
+
+/* ── PROCESSING SCREEN ────────────────────────────────────────────────────── */
+#processing { 
+  background: var(--bg2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.proc-content { 
+  display: flex; flex-direction: column; align-items: center; 
+  padding: 40px 32px;
+  text-align: center;
+}
+.ai-ring {
+  width: 120px; height: 120px;
+  position: relative;
+  margin-bottom: 32px;
+}
+.ai-ring svg {
+  animation: spin 2s linear infinite;
+  position: absolute; inset: 0;
+}
+.ai-ring-inner {
+  position: absolute;
+  inset: 15px;
+  background: var(--surface);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.proc-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+.proc-sub { font-size: 14px; color: var(--text2); margin-bottom: 32px; }
+.proc-steps { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 0; }
+.proc-step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.proc-step:last-child { border-bottom: none; }
+.proc-step-icon {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: all 0.4s;
+}
+.proc-step-icon.pending { background: var(--surface2); }
+.proc-step-icon.active { background: rgba(124,111,255,0.2); animation: pulse 1s ease-in-out infinite; }
+.proc-step-icon.done { background: rgba(34,211,163,0.15); }
+@keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+.proc-step-label { font-size: 14px; font-weight: 500; flex: 1; }
+.proc-step-label span { color: var(--text2); }
+.proc-check { width: 20px; height: 20px; border-radius: 50%; background: var(--green); display: flex; align-items: center; justify-content: center; }
+.proc-spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+/* ── ITEMS SCREEN ─────────────────────────────────────────────────────────── */
+#items { background: var(--bg2); }
+.items-header {
+  padding: 59px 22px 0;
+  background: linear-gradient(to bottom, var(--bg2) 80%, transparent);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(20px);
+}
+.items-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.items-screen-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; flex: 1; }
+.items-rest { font-size: 13px; color: var(--text3); margin-bottom: 16px; }
+
+.pax-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.pax-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.pax-chip:active { transform: scale(0.95); }
+.pax-ava {
+  width: 46px; height: 46px;
+  border-radius: 14px;
+  font-size: 22px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2.5px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+}
+.pax-ava.selected { border-color: var(--accent); background: rgba(124,111,255,0.1); }
+.pax-chip-name { font-size: 11px; font-weight: 500; color: var(--text2); }
+.pax-add {
+  width: 46px; height: 46px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1.5px dashed var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  color: var(--text3);
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 0;
+  padding-bottom: 14px;
+}
+.tab {
+  padding: 8px 16px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab.active { background: var(--accent); color: white; }
+.tab.inactive { background: var(--surface); color: var(--text2); border: 1px solid var(--border); }
+
+.items-list { padding: 0 22px 120px; }
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+.item-row:last-child { border-bottom: none; }
+.item-check {
+  width: 26px; height: 26px;
+  border-radius: 8px;
+  border: 2px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.item-check.checked { background: var(--accent); border-color: var(--accent); }
+.item-info { flex: 1; min-width: 0; }
+.item-name { font-size: 14px; font-weight: 600; }
+.item-qty { font-size: 12px; color: var(--text3); }
+.item-price { font-size: 15px; font-weight: 700; }
+.item-assignees {
+  display: flex;
+  margin-top: 4px;
+  gap: -4px;
+}
+.item-avatar {
+  width: 18px; height: 18px;
+  border-radius: 6px;
+  font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--bg2);
+  margin-right: -4px;
+}
+
+.items-footer {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 390px;
+  padding: 16px 22px 34px;
+  background: linear-gradient(to top, var(--bg2) 70%, transparent);
+  z-index: 20;
+}
+.items-footer-summary {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.items-footer-label { font-size: 13px; color: var(--text2); }
+.items-footer-val { font-size: 15px; font-weight: 700; }
+
+/* ── SUMMARY SCREEN ───────────────────────────────────────────────────────── */
+#summary { background: var(--bg2); }
+.summary-header {
+  padding: 59px 22px 20px;
+}
+.summary-hero {
+  text-align: center;
+  padding: 20px 0 28px;
+}
+.summary-icon {
+  width: 72px; height: 72px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(34,211,163,0.2), rgba(13,148,136,0.1));
+  border: 1px solid rgba(34,211,163,0.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px;
+  margin: 0 auto 16px;
+}
+.summary-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+.summary-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+.person-cards { padding: 0 22px 20px; display: flex; flex-direction: column; gap: 12px; }
+.person-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 16px;
+  transition: all 0.2s;
+}
+.person-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.person-card-ava { width: 44px; height: 44px; border-radius: 14px; font-size: 22px; display: flex; align-items: center; justify-content: center; }
+.person-card-info { flex: 1; }
+.person-card-name { font-size: 15px; font-weight: 700; }
+.person-card-items { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.person-card-amount { font-size: 20px; font-weight: 800; color: var(--accent2); }
+.person-card-breakdown { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+.breakdown-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); }
+.breakdown-row.total { font-size: 13px; font-weight: 600; color: var(--text); padding-top: 6px; border-top: 1px solid var(--border); }
+.pay-btn {
+  width: 100%;
+  padding: 13px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+.pay-btn:active { transform: scale(0.97); }
+.pay-btn.upi { background: rgba(0,177,90,0.15); color: #00D46A; border: 1px solid rgba(0,177,90,0.25); }
+.pay-btn.link { background: rgba(124,111,255,0.12); color: var(--accent2); border: 1px solid rgba(124,111,255,0.2); }
+.pay-btn.paid { background: rgba(34,211,163,0.1); color: var(--green); border: 1px solid rgba(34,211,163,0.2); }
+.pay-btns { display: flex; gap: 8px; }
+
+.share-card {
+  margin: 0 22px 16px;
+  padding: 18px;
+  background: linear-gradient(135deg, rgba(124,111,255,0.12), rgba(167,139,250,0.06));
+  border: 1px solid rgba(124,111,255,0.2);
+  border-radius: 20px;
+}
+.share-card-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.share-card-sub { font-size: 12px; color: var(--text2); margin-bottom: 14px; }
+.share-link-box {
+  background: var(--surface2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--accent2);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+.share-link-copy { font-size: 12px; color: var(--text3); white-space: nowrap; }
+
+.summary-total-card {
+  margin: 0 22px 30px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+.stc-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+.stc-label { font-size: 13px; color: var(--text2); }
+.stc-val { font-size: 14px; font-weight: 600; }
+.stc-divider { height: 1px; background: var(--border); margin: 8px 0; }
+.stc-total-row { display: flex; justify-content: space-between; align-items: center; }
+.stc-total-label { font-size: 16px; font-weight: 700; }
+.stc-total-val { font-size: 22px; font-weight: 800; }
+
+/* ── GUEST SCREEN ─────────────────────────────────────────────────────────── */
+#guest { background: var(--bg2); }
+.guest-hero {
+  padding: 80px 22px 30px;
+  text-align: center;
+}
+.guest-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(34,211,163,0.12);
+  border: 1px solid rgba(34,211,163,0.2);
+  border-radius: 99px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+  margin-bottom: 16px;
+}
+.guest-title { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px; }
+.guest-sub { font-size: 14px; color: var(--text2); }
+
+.guest-items { padding: 0 22px 120px; }
+.guest-host-note {
+  background: rgba(124,111,255,0.08);
+  border: 1px solid rgba(124,111,255,0.15);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text2);
+  margin-bottom: 16px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.guest-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.guest-item:last-child { border-bottom: none; }
+.guest-item-sel {
+  width: 28px; height: 28px;
+  border-radius: 9px;
+  border: 2px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.guest-item-sel.on { background: var(--green); border-color: var(--green); }
+.guest-item-name { flex: 1; font-size: 14px; font-weight: 600; }
+.guest-item-price { font-size: 15px; font-weight: 700; color: var(--green); }
+
+.guest-footer {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 390px;
+  padding: 16px 22px 34px;
+  background: linear-gradient(to top, var(--bg2) 70%, transparent);
+  z-index: 20;
+}
+.guest-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.guest-total-label { font-size: 13px; color: var(--text2); }
+.guest-total-amount { font-size: 22px; font-weight: 800; color: var(--green); }
+
+/* ── PAYMENT SCREEN ───────────────────────────────────────────────────────── */
+#payment { background: var(--bg2); }
+.payment-pad { padding: 59px 22px 40px; }
+.pay-hero { text-align: center; padding: 20px 0 30px; }
+.pay-amount-label { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+.pay-amount-big { font-size: 52px; font-weight: 900; letter-spacing: -2px; }
+.pay-amount-big span { color: var(--green); }
+.pay-to { font-size: 14px; color: var(--text2); margin-top: 6px; }
+
+.pay-methods { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+.pay-method {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.pay-method:active { transform: scale(0.98); }
+.pay-method.selected { border-color: var(--accent); background: rgba(124,111,255,0.06); }
+.pay-method-icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+.pay-method-info { flex: 1; }
+.pay-method-name { font-size: 15px; font-weight: 700; }
+.pay-method-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.pay-method-badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 99px; }
+.pay-method-badge.fast { background: rgba(34,211,163,0.12); color: var(--green); }
+
+.pay-success-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--bg2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+.pay-success-overlay.show { opacity: 1; pointer-events: all; }
+.pay-success-icon {
+  width: 100px; height: 100px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--green), var(--green2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44px;
+  margin-bottom: 24px;
+  animation: popIn 0.5s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+.pay-success-title { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+.pay-success-sub { font-size: 14px; color: var(--text2); text-align: center; padding: 0 40px; }
+
+/* ── CONFETTI ─────────────────────────────────────────────────────────────── */
+.confetti-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 200;
+}
+.confetti-piece {
+  position: absolute;
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  animation: confettiFall linear forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(900px) rotate(720deg); opacity: 0; }
+}
+
+/* ── TOAST ────────────────────────────────────────────────────────────────── */
+.toast {
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(30,30,42,0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 999;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(.4,0,.2,1);
+  pointer-events: none;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── NAV BAR ──────────────────────────────────────────────────────────────── */
+.nav-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 88px;
+  background: rgba(17,17,24,0.8);
+  backdrop-filter: blur(24px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  z-index: 50;
+  padding-bottom: 20px;
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  padding-top: 8px;
+}
+.nav-item:active { transform: scale(0.92); }
+.nav-icon { font-size: 22px; transition: all 0.2s; }
+.nav-label { font-size: 10px; font-weight: 600; color: var(--text3); transition: color 0.2s; }
+.nav-item.active .nav-icon { filter: drop-shadow(0 0 6px rgba(124,111,255,0.8)); }
+.nav-item.active .nav-label { color: var(--accent2); }
+.nav-dot {
+  position: absolute;
+  top: -2px; right: -4px;
+  width: 8px; height: 8px;
+  background: var(--red);
+  border-radius: 50%;
+  border: 1.5px solid var(--bg2);
+}
+.nav-icon-wrap { position: relative; display: inline-block; }
+
+/* ── RESPONSIVE / DESKTOP ─────────────────────────────────────────────────── */
+@media (max-width: 440px) {
+  .shell { align-items: flex-start; }
+  .phone { width: 100vw; height: 100dvh; border-radius: 0; box-shadow: none; }
+  .island { display: none; }
+  .items-footer, .guest-footer { left: 0; transform: none; width: 100%; }
+  .pay-success-overlay { position: fixed; }
+}
+/* Sleek input styles for Split Setup */
+input[type="text"], input[type="number"] {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+input[type="text"]:focus, input[type="number"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(124, 111, 255, 0.15);
+}
+.setup-friend-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.setup-friend-remove {
+  background: rgba(248,113,113,0.1);
+  color: var(--red);
+  border: 1px solid rgba(248,113,113,0.2);
+  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="phone" id="phone">
+    <!-- Dynamic Island -->
+    <div class="island"></div>
+    <!-- Status Bar -->
+    <div class="status">
+      <span class="status-time">9:41</span>
+      <div class="status-icons">
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="white"><rect x="0" y="3" width="3" height="9" rx="1"/><rect x="4.5" y="2" width="3" height="10" rx="1"/><rect x="9" y="0.5" width="3" height="11.5" rx="1"/><rect x="13.5" y="0" width="2.5" height="12" rx="1" opacity=".3"/></svg>
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="white"><path d="M8 2.5C10.5 2.5 12.8 3.5 14.4 5.2L15.7 3.9C13.7 1.8 11 0.5 8 0.5C5 0.5 2.3 1.8 0.3 3.9L1.6 5.2C3.2 3.5 5.5 2.5 8 2.5Z" opacity=".4"/><path d="M8 5C9.7 5 11.2 5.7 12.3 6.8L13.6 5.5C12.1 4.1 10.1 3.2 8 3.2C5.9 3.2 3.9 4.1 2.4 5.5L3.7 6.8C4.8 5.7 6.3 5 8 5Z" opacity=".7"/><circle cx="8" cy="10" r="2"/></svg>
+        <svg width="25" height="12" viewBox="0 0 25 12" fill="white"><rect x="0" y="1" width="22" height="10" rx="3" stroke="white" stroke-width="1" fill="none" opacity=".35"/><rect x="23" y="4" width="2" height="4" rx="1" opacity=".35"/><rect x="1" y="2" width="18" height="8" rx="2" fill="white"/></svg>
+      </div>
+    </div>
+
+    <!-- Screens -->
+    <div class="screens">
+
+      <!-- ═══ SETUP SPLIT ═══ -->
+      <div class="screen" id="setup-split" style="background: var(--bg2);">
+        <div style="padding: 59px 22px 30px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <button class="back-btn" onclick="goTo('home')" style="background:var(--surface);border:1px solid var(--border);">
+              <svg width="18" height="18" viewBox="0 0 18 18"><path d="M11 4L6 9L11 14" stroke="var(--text2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div style="font-size:20px;font-weight:800;flex:1;">New Split Setup</div>
+          </div>
+
+          <div class="card" style="padding: 18px; margin-bottom: 14px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:700; font-size:13px; color:var(--text2);">Your Info (Host)</div>
+            <input type="text" id="setup-host-name" placeholder="Your Name" value="Kshitij" />
+            <input type="text" id="setup-host-upi" placeholder="Your UPI ID (optional)" value="kshitij@okaxis" />
+          </div>
+
+          <div class="card" style="padding: 18px; margin-bottom: 14px; display:flex; flex-direction:column; gap:12px;">
+            <div style="font-weight:700; font-size:13px; color:var(--text2);">Split Info</div>
+            <input type="text" id="setup-restaurant" placeholder="Restaurant or Event Name (e.g. BBQ, Pizza)" value="" />
+          </div>
+
+          <div class="card" style="padding: 18px; margin-bottom: 20px; display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="font-weight:700; font-size:13px; color:var(--text2);">Friends (Participants)</div>
+              <button class="btn" onclick="addSetupFriendRow()" style="background:rgba(124,111,255,0.12); color:var(--accent2); border:none; border-radius:8px; padding:4px 10px; font-size:11px; font-weight:600;">+ Add Friend</button>
+            </div>
+            <div id="setup-friends-list" style="display:flex; flex-direction:column; gap:8px;">
+              <!-- Friends rows inserted dynamically -->
+            </div>
+          </div>
+
+          <button class="btn btn-primary" onclick="confirmSplitSetup('scan')" style="width:100%;">📷 Upload or Scan Receipt</button>
+          <div style="height: 10px;"></div>
+          <button class="btn btn-secondary" onclick="confirmSplitSetup('manual')" style="width:100%;">✏️ Manual Entry (Skip Scan)</button>
+        </div>
+      </div>
+
+      <!-- ═══ HOME ═══ -->
+      <div class="screen active" id="home">
+        <div class="home-bg"></div>
+        <div class="home-pad">
+          <div class="home-greeting">Good evening 🌙</div>
+          <div class="home-name" id="home-username" onclick="editHostNameInline()" style="cursor:pointer; display:inline-block;">Kshitij ✌️</div>
+
+          <div class="balance-card">
+            <div class="balance-label">You are owed</div>
+            <div class="balance-amount"><span>₹2,840</span></div>
+            <div class="balance-sub">across 3 friends · tap to settle</div>
+          </div>
+
+          <div class="quick-actions">
+            <button class="qa-btn" id="btn-scan-receipt">
+              <div class="qa-icon purple">📷</div>
+              <div>
+                <div class="qa-label">Scan Receipt</div>
+                <div class="qa-sub">AI itemizes in 2s</div>
+              </div>
+            </button>
+            <button class="qa-btn" onclick="goTo('guest')">
+              <div class="qa-icon green">🔗</div>
+              <div>
+                <div class="qa-label">Guest View</div>
+                <div class="qa-sub">No app needed</div>
+              </div>
+            </button>
+            <button class="qa-btn" onclick="showToast('Coming soon! 🚀')">
+              <div class="qa-icon gold">👥</div>
+              <div>
+                <div class="qa-label">New Group</div>
+                <div class="qa-sub">Recurring splits</div>
+              </div>
+            </button>
+            <button class="qa-btn" onclick="showToast('Settle all with 1 tap 🎉')">
+              <div class="qa-icon pink">⚡</div>
+              <div>
+                <div class="qa-label">Settle All</div>
+                <div class="qa-sub">Min. transactions</div>
+              </div>
+            </button>
+          </div>
+
+          <div class="section-title">
+            Recent Splits
+            <span class="section-see">See all</span>
+          </div>
+          <div class="card" style="padding: 0 16px;">
+            <div class="split-item" onclick="goTo('summary')">
+              <div class="split-avatar" style="background:rgba(255,170,80,0.12)">🍖</div>
+              <div class="split-info">
+                <div class="split-name">Quarters Korean BBQ</div>
+                <div class="split-date">Today · 4 people</div>
+              </div>
+              <div>
+                <div class="split-amount owed">+₹2,540</div>
+                <div style="font-size:11px;color:var(--text3);text-align:right">owed to you</div>
+              </div>
+            </div>
+            <div class="split-item" onclick="showToast('₹640 settled ✓')">
+              <div class="split-avatar" style="background:rgba(96,165,250,0.12)">🍕</div>
+              <div class="split-info">
+                <div class="split-name">Slice of Heaven Pizza</div>
+                <div class="split-date">Jun 5 · 3 people</div>
+              </div>
+              <div>
+                <div class="split-amount owe">-₹640</div>
+                <div style="font-size:11px;color:var(--text3);text-align:right">you owe</div>
+              </div>
+            </div>
+            <div class="split-item" onclick="showToast('Settled 2 days ago ✓')">
+              <div class="split-avatar" style="background:rgba(34,211,163,0.12)">☕</div>
+              <div class="split-info">
+                <div class="split-name">Blue Tokai Coffee</div>
+                <div class="split-date">Jun 3 · 2 people</div>
+              </div>
+              <div>
+                <div class="split-amount" style="color:var(--text3)">Settled</div>
+                <div style="font-size:11px;color:var(--text3);text-align:right">✓</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="height: 100px;"></div>
+        </div>
+
+        <!-- Nav -->
+        <div class="nav-bar">
+          <div class="nav-item active">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-label">Home</span>
+          </div>
+          <div class="nav-item" onclick="goTo('summary')">
+            <span class="nav-icon-wrap">
+              <span class="nav-icon">💸</span>
+              <span class="nav-dot"></span>
+            </span>
+            <span class="nav-label">Splits</span>
+          </div>
+          <div class="nav-item" onclick="showToast('Friends coming soon!')">
+            <span class="nav-icon">👫</span>
+            <span class="nav-label">Friends</span>
+          </div>
+          <div class="nav-item" onclick="showToast('Your profile 🙌')">
+            <span class="nav-icon">🧑</span>
+            <span class="nav-label">Profile</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SCAN ═══ -->
+      <div class="screen" id="scan">
+        <div class="scan-header">
+          <button class="back-btn" onclick="goBack()">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="white"><path d="M11 4L6 9L11 14" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <span class="scan-title">Scan Receipt</span>
+          <div style="width:38px"></div>
+        </div>
+
+        <div class="camera-view">
+          <div class="receipt-preview">
+            <img src="receipt.png" alt="Receipt" />
+          </div>
+          <div class="scan-overlay">
+            <div class="scan-corner tl"></div>
+            <div class="scan-corner tr"></div>
+            <div class="scan-corner bl"></div>
+            <div class="scan-corner br"></div>
+            <div class="scan-line"></div>
+          </div>
+        </div>
+
+        <div class="scan-bottom">
+          <div class="scan-hint">Position receipt within frame · AI reads automatically</div>
+          <div style="display:flex;gap:12px;align-items:center;justify-content:center;">
+            <button class="btn btn-secondary" onclick="triggerFileSelect()" style="flex:0;padding:14px 18px;border-radius:16px;">
+              📁
+            </button>
+            <button class="shutter" onclick="triggerFileSelect()">
+              <div class="shutter-inner"></div>
+            </button>
+            <button class="btn btn-secondary" onclick="showToast('Flash on 💡')" style="flex:0;padding:14px 18px;border-radius:16px;">
+              ⚡
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ PROCESSING ═══ -->
+      <div class="screen" id="processing">
+        <div class="proc-content">
+          <div class="ai-ring">
+            <svg width="120" height="120" viewBox="0 0 120 120">
+              <defs>
+                <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#7C6FFF"/>
+                  <stop offset="100%" stop-color="#22D3A3"/>
+                </linearGradient>
+              </defs>
+              <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(124,111,255,0.15)" stroke-width="3"/>
+              <circle cx="60" cy="60" r="52" fill="none" stroke="url(#ringGrad)" stroke-width="3" stroke-linecap="round" stroke-dasharray="80 246"/>
+            </svg>
+            <div class="ai-ring-inner">✨</div>
+          </div>
+          <div class="proc-title">Reading your receipt</div>
+          <div class="proc-sub">Gemini Vision is parsing the bill…</div>
+
+          <div class="card proc-steps" style="padding: 4px 20px; width:100%;">
+            <div class="proc-step">
+              <div class="proc-step-icon done" id="pstep1">✅</div>
+              <div class="proc-step-label">Image uploaded <span>· 1.2MB</span></div>
+              <div class="proc-check">
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+              </div>
+            </div>
+            <div class="proc-step">
+              <div class="proc-step-icon" id="pstep2">🔍</div>
+              <div class="proc-step-label" id="pstep2label">Reading line items</div>
+              <div id="pstep2indicator" class="proc-spinner"></div>
+            </div>
+            <div class="proc-step">
+              <div class="proc-step-icon pending" id="pstep3">💰</div>
+              <div class="proc-step-label" id="pstep3label"><span>Calculating totals</span></div>
+              <div id="pstep3indicator" style="width:20px"></div>
+            </div>
+            <div class="proc-step">
+              <div class="proc-step-icon pending" id="pstep4">👥</div>
+              <div class="proc-step-label" id="pstep4label"><span>Building split view</span></div>
+              <div id="pstep4indicator" style="width:20px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ ITEMS ═══ -->
+      <div class="screen" id="items">
+        <div class="items-header">
+          <div class="items-title-row">
+            <button class="back-btn" onclick="goBack()" style="background:var(--surface);border:1px solid var(--border);">
+              <svg width="18" height="18" viewBox="0 0 18 18"><path d="M11 4L6 9L11 14" stroke="var(--text2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="items-screen-title">Assign Items</div>
+            <button class="btn" onclick="goTo('summary')" style="background:var(--accent);color:white;border-radius:12px;padding:8px 16px;font-size:13px;border:none;">Done</button>
+          </div>
+          <div class="items-rest" style="display:flex; align-items:center; gap:8px;">
+            <span id="items-rest-display">🍽️ Meal Title</span>
+            <button onclick="editRestaurantName()" style="background:none; border:none; color:var(--text3); font-size:11px; cursor:pointer;">✏️ Edit</button>
+          </div>
+
+          <!-- People row -->
+          <div class="pax-row" id="pax-row">
+            <!-- Populated dynamically via JS -->
+          </div>
+
+          <div class="tabs">
+            <button class="tab active" id="tab-all" onclick="switchTab('all')">All Items</button>
+            <button class="tab inactive" id="tab-you" onclick="switchTab('you')">Yours</button>
+            <button class="tab inactive" id="tab-unassigned" onclick="switchTab('unassigned')">Unassigned</button>
+          </div>
+        </div>
+
+        <!-- Manual Add Item Form -->
+        <div style="padding: 10px 22px; background: var(--bg2); border-bottom: 1px solid var(--border);">
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="new-item-name" placeholder="➕ Add custom item name" style="flex:2; height: 38px; padding: 6px 12px; font-size: 13px; border-radius: 8px; border:1px solid var(--border); background:var(--surface); color:var(--text);" />
+            <input type="number" id="new-item-price" placeholder="Price" style="flex:1; height: 38px; padding: 6px 12px; font-size: 13px; border-radius: 8px; border:1px solid var(--border); background:var(--surface); color:var(--text);" />
+            <button class="btn" onclick="addManualItem()" style="background:var(--accent); color:white; border-radius: 8px; font-size: 13px; font-weight:700; height:38px; padding: 0 16px; width: auto;">Add</button>
+          </div>
+        </div>
+
+        <div class="items-list" id="items-list"></div>
+
+        <div class="items-footer">
+          <div class="items-footer-summary">
+            <div>
+              <div class="items-footer-label">Your subtotal</div>
+              <div class="items-footer-val" id="my-subtotal">₹0</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="items-footer-label">Bill total</div>
+              <div class="items-footer-val" id="items-bill-total">₹0</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="goTo('summary')">
+            ✓ &nbsp; Confirm & Share Split
+          </button>
+        </div>
+      </div>
+
+      <!-- ═══ SUMMARY ═══ -->
+      <div class="screen" id="summary">
+        <div class="summary-header">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;">
+            <button class="back-btn" onclick="goBack()" style="background:var(--surface);border:1px solid var(--border);">
+              <svg width="18" height="18" viewBox="0 0 18 18"><path d="M11 4L6 9L11 14" stroke="var(--text2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div style="font-size:20px;font-weight:800;letter-spacing:-0.5px;flex:1;">Split Summary</div>
+            <button class="btn" onclick="showToast('Receipt saved 📁')" style="background:var(--surface);color:var(--text2);border:1px solid var(--border);border-radius:12px;padding:8px 14px;font-size:13px;">Save</button>
+          </div>
+        </div>
+
+        <div class="summary-hero">
+          <div class="summary-icon">🍖</div>
+          <div class="summary-title">Quarters Korean BBQ</div>
+          <div class="summary-sub">Jun 8, 2026 · 4 people · You paid</div>
+        </div>
+
+        <!-- Share card -->
+        <div class="share-card">
+          <div class="share-card-title">🔗 Share with your friends</div>
+          <div class="share-card-sub">They open the link — no app needed</div>
+          <div class="share-link-box" onclick="copyLink()">
+            <span>wise.app/s/kbbq-k8f2x</span>
+            <span class="share-link-copy" id="copy-label">Copy</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary" onclick="showToast('Shared to WhatsApp! 🟢')" style="flex:1;font-size:13px;padding:12px;">WhatsApp</button>
+            <button class="btn btn-secondary" onclick="showToast('Link copied! 📋')" style="flex:1;font-size:13px;padding:12px;">Copy Link</button>
+            <button class="btn btn-secondary" onclick="showToast('QR generated! 📱')" style="flex:0;font-size:13px;padding:12px 16px;">QR</button>
+          </div>
+        </div>
+
+        <!-- People -->
+        <div class="person-cards" id="person-cards"></div>
+
+        <!-- Total -->
+        <div class="summary-total-card">
+          <div class="stc-row">
+            <span class="stc-label">Subtotal</span>
+            <span class="stc-val">₹11,200</span>
+          </div>
+          <div class="stc-row">
+            <span class="stc-label">Tax (8%)</span>
+            <span class="stc-val">₹1,053</span>
+          </div>
+          <div class="stc-row">
+            <span class="stc-label">Tip (included)</span>
+            <span class="stc-val">₹1,800</span>
+          </div>
+          <div class="stc-divider"></div>
+          <div class="stc-total-row">
+            <span class="stc-total-label">Bill Total</span>
+            <span class="stc-total-val">₹15,347</span>
+          </div>
+        </div>
+
+        <div style="height:30px;"></div>
+      </div>
+
+      <!-- ═══ GUEST ═══ -->
+      <div class="screen" id="guest">
+        <div class="guest-hero">
+          <div class="guest-badge">🔗 Guest View · No app needed</div>
+          <div class="guest-title">Select your items</div>
+          <div class="guest-sub" id="guest-sub">From <strong>Quarters Korean BBQ</strong> — Jun 8</div>
+        </div>
+        <div class="guest-items">
+          <div class="guest-host-note">
+            <span>ℹ️</span>
+            <span><strong>Kshitij</strong> fronted the bill. Select what you ordered and pay your share instantly.</span>
+          </div>
+          <div id="guest-items-list"></div>
+        </div>
+        <div class="guest-footer">
+          <div class="guest-total-row">
+            <span class="guest-total-label">Your total (with tax & tip)</span>
+            <span class="guest-total-amount" id="guest-total">₹0</span>
+          </div>
+          <button class="btn btn-green" id="guest-pay-btn" onclick="goToPayment()">
+            💸 &nbsp; Pay Kshitij
+          </button>
+        </div>
+      </div>
+
+      <!-- ═══ PAYMENT ═══ -->
+      <div class="screen" id="payment">
+        <div class="payment-pad">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <button class="back-btn" onclick="goBack()" style="background:var(--surface);border:1px solid var(--border);">
+              <svg width="18" height="18" viewBox="0 0 18 18"><path d="M11 4L6 9L11 14" stroke="var(--text2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div style="font-size:18px;font-weight:800;flex:1;">Pay Now</div>
+          </div>
+
+          <div class="pay-hero">
+            <div class="pay-amount-label">You owe</div>
+            <div class="pay-amount-big"><span id="pay-amount-display">₹3,840</span></div>
+            <div class="pay-to">to Kshitij · Quarters Korean BBQ</div>
+          </div>
+
+          <div class="pay-methods">
+            <div class="pay-method selected" onclick="selectMethod(this)">
+              <div class="pay-method-icon" style="background:rgba(0,177,90,0.12);">🇮🇳</div>
+              <div class="pay-method-info">
+                <div class="pay-method-name">UPI</div>
+                <div class="pay-method-sub">GPay · PhonePe · BHIM · Any UPI app</div>
+              </div>
+              <span class="pay-method-badge fast">Instant</span>
+            </div>
+            <div class="pay-method" onclick="selectMethod(this)">
+              <div class="pay-method-icon" style="background:rgba(96,165,250,0.12);">💳</div>
+              <div class="pay-method-info">
+                <div class="pay-method-name">Card</div>
+                <div class="pay-method-sub">Credit or Debit card</div>
+              </div>
+              <span class="pay-method-badge">Soon</span>
+            </div>
+          </div>
+
+          <button class="btn btn-green" id="pay-now-btn" onclick="doPayment()">
+            💸 &nbsp; Pay Now
+          </button>
+        </div>
+
+        <!-- Success overlay -->
+        <div class="pay-success-overlay" id="pay-success">
+          <div class="confetti-container" id="confetti"></div>
+          <div class="pay-success-icon">✅</div>
+          <div class="pay-success-title">Paid! 🎉</div>
+          <div class="pay-success-sub" id="pay-success-sub-text">Payment sent to host.<br/>Your friends can see this too.</div>
+          <button class="btn btn-primary" onclick="goTo('home')" style="margin-top:32px;width:200px;">Back to Home</button>
+        </div>
+      </div>
+
+    </div><!-- /screens -->
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+    <!-- Confetti global -->
+    <div class="confetti-container" id="global-confetti"></div>
+  </div><!-- /phone -->
+</div><!-- /shell -->
+
+<!-- Hidden file input for real receipt uploads -->
+<input type="file" id="receipt-file-input" accept="image/*" style="display:none;" />
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+let ITEMS = [];
+let PEOPLE = [];
+let assignments = {};
+let selectedPerson = 0;
+let currentTab = 'all';
+let historyStack = ['home'];
+let currentScreen = 'home';
+let guestSelectedItems = new Set();
+
+// Dynamic split info
+let activeSplitName = "";
+let TAX_RATE = 0.08;
+let TIP_RATE = 0.10;
+
+// Setup friends state
+let setupFriends = [];
+
+const colors = [
+  'rgba(124,111,255,0.18)',
+  'rgba(255,170,80,0.18)',
+  'rgba(96,165,250,0.18)',
+  'rgba(248,113,113,0.18)',
+  'rgba(34,211,163,0.18)',
+  'rgba(245,158,11,0.18)'
+];
+
+// ── SETUP FRIENDS ────────────────────────────────────────────────────────────
+function initSetupFriends() {
+  const list = document.getElementById('setup-friends-list');
+  if (!list) return;
+  list.innerHTML = setupFriends.map((f, idx) => `
+    <div class="setup-friend-row">
+      <input type="text" value="${f.name}" onchange="updateSetupFriend(${idx}, 'name', this.value)" placeholder="Name" style="flex:2;" />
+      <input type="text" value="${f.emoji}" onchange="updateSetupFriend(${idx}, 'emoji', this.value)" placeholder="Emoji" style="width:44px; text-align:center;" />
+      <input type="text" value="${f.upi}" onchange="updateSetupFriend(${idx}, 'upi', this.value)" placeholder="UPI ID" style="flex:2;" />
+      <button class="setup-friend-remove" onclick="removeSetupFriend(${idx})">×</button>
+    </div>
+  `).join('');
+}
+
+function addSetupFriendRow() {
+  const emojis = ['🧑', '👦', '👩', '👨', '👧', '👵', '👴', '🦊', '🦁', '🐼'];
+  setupFriends.push({
+    name: 'Friend ' + (setupFriends.length + 1),
+    emoji: emojis[setupFriends.length % emojis.length],
+    upi: ''
+  });
+  initSetupFriends();
+}
+
+function removeSetupFriend(idx) {
+  setupFriends.splice(idx, 1);
+  initSetupFriends();
+}
+
+function updateSetupFriend(idx, key, val) {
+  setupFriends[idx][key] = val;
+}
+
+// Inline edit host name
+function editHostNameInline() {
+  const old = PEOPLE[0] ? PEOPLE[0].name : '';
+  const newName = prompt("Enter your name:", old);
+  if (newName && newName.trim()) {
+    const trimmed = newName.trim();
+    if (PEOPLE[0]) PEOPLE[0].name = trimmed;
+    document.getElementById('home-username').textContent = trimmed + ' ✌️';
+    document.getElementById('setup-host-name').value = trimmed;
+    localStorage.setItem('wise_host_name', trimmed);
+    showToast(`Name updated to ${trimmed} ✓`);
+  }
+}
+
+// ── BACKEND API LAYER ──────────────────────────────────────────────────────────
+const API_BASE = 'http://localhost:8081/api';
+const WS_BASE  = 'ws://localhost:8081/api';
+
+let backendOnline = false;
+let activeSplitId = null;
+let activeWs = null;
+let activeGuestToken = null;
+
+// Check if backend is running
+async function detectBackend() {
+  try {
+    const r = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(1500) });
+    if (r.ok) {
+      backendOnline = true;
+      showBackendStatus(true);
+      return true;
+    }
+  } catch (_) {}
+  showBackendStatus(false);
+  return false;
+}
+
+function showBackendStatus(online) {
+  document.getElementById('backend-indicator')?.remove();
+  const indicator = document.createElement('div');
+  indicator.id = 'backend-indicator';
+  indicator.style.cssText = `
+    position: absolute; top: 64px; right: 16px; z-index: 997;
+    display: flex; align-items: center; gap: 5px;
+    background: ${online ? 'rgba(34,211,163,0.12)' : 'rgba(248,113,113,0.1)'};
+    border: 1px solid ${online ? 'rgba(34,211,163,0.25)' : 'rgba(248,113,113,0.2)'};
+    border-radius: 99px; padding: 4px 10px;
+    font-size: 10px; font-weight: 600;
+    color: ${online ? '#22D3A3' : '#F87171'};
+    pointer-events: none;
+  `;
+  indicator.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:${online ? '#22D3A3' : '#F87171'};${online ? 'animation:pulse 2s ease-in-out infinite;' : ''}"></span> ${online ? 'Live API' : 'Demo Mode'}`;
+  document.getElementById('phone').appendChild(indicator);
+}
+
+// Create split on backend
+async function apiCreateSplit() {
+  const hostName = document.getElementById('setup-host-name').value.trim() || 'You';
+  const hostUpi = document.getElementById('setup-host-upi').value.trim() || '';
+  const restName = document.getElementById('setup-restaurant').value.trim() || 'Custom Split';
+
+  activeSplitName = restName;
+  localStorage.setItem('wise_host_name', hostName);
+  localStorage.setItem('wise_host_upi', hostUpi);
+
+  // Initialize PEOPLE array
+  PEOPLE = [];
+  PEOPLE.push({
+    id: 0,
+    name: hostName,
+    emoji: '😎',
+    color: colors[0],
+    upi: hostUpi || null
+  });
+
+  setupFriends.forEach((f, idx) => {
+    if (f.name.trim()) {
+      PEOPLE.push({
+        id: idx + 1,
+        name: f.name.trim(),
+        emoji: f.emoji.trim() || '😊',
+        color: colors[(idx + 1) % colors.length],
+        upi: f.upi.trim() || null
+      });
+    }
+  });
+
+  // Reset local items
+  ITEMS = [];
+  assignments = {};
+  selectedPerson = 0;
+
+  if (backendOnline) {
+    showToast("Setting up split on server…");
+    const payload = {
+      name: restName,
+      restaurant: restName,
+      participants: PEOPLE.map(p => ({
+        name: p.name,
+        emoji: p.emoji,
+        upi_id: p.upi
+      }))
+    };
+
+    try {
+      const resp = await fetch(`${API_BASE}/splits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        activeSplitId = data.split_id;
+        activeGuestToken = data.guest_token;
+
+        // Update share UI
+        document.querySelector('.share-link-box span').textContent = data.guest_link;
+
+        // Save split to local history
+        saveSplitToHistory(data.split_id, restName, PEOPLE.length, data.guest_link);
+
+        // Setup WS
+        initWebSocket(data.ws_url);
+
+        // Fetch to match participant database IDs
+        await apiSyncSplitDetails();
+      }
+    } catch(e) {
+      console.warn("Backend split creation failed, using client mode:", e);
+    }
+  }
+
+  document.getElementById('items-rest-display').textContent = activeSplitName;
+}
+
+function saveSplitToHistory(id, restaurant, count, link) {
+  let splits = [];
+  try {
+    splits = JSON.parse(localStorage.getItem('wise_splits') || '[]');
+  } catch(e) {}
+  // Avoid duplicates
+  splits = splits.filter(s => s.id !== id);
+  splits.unshift({
+    id: id,
+    restaurant: restaurant,
+    date: 'Today',
+    count: count,
+    link: link,
+    amount: 0
+  });
+  // Cap at 10
+  if (splits.length > 10) splits.pop();
+  localStorage.setItem('wise_splits', JSON.stringify(splits));
+  renderRecentSplits();
+}
+
+function renderRecentSplits() {
+  const container = document.getElementById('recent-splits-list');
+  if (!container) return;
+
+  let splits = [];
+  try {
+    splits = JSON.parse(localStorage.getItem('wise_splits') || '[]');
+  } catch(e) {}
+
+  if (splits.length === 0) {
+    container.innerHTML = `
+      <div style="padding:24px; text-align:center; color:var(--text3); font-size:13px;">
+        No splits yet. Click the Scan or Setup button below to get started! 🚀
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = splits.map(s => `
+    <div class="split-item" onclick="loadSplit('${s.id}')">
+      <div class="split-avatar" style="background:rgba(255,170,80,0.12)">🍽️</div>
+      <div class="split-info">
+        <div class="split-name">${s.restaurant}</div>
+        <div class="split-date">${s.date} · ${s.count} people</div>
+      </div>
+      <div>
+        <div class="split-amount owed">+₹${s.amount || '0'}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function loadSplit(id) {
+  activeSplitId = id;
+  if (backendOnline) {
+    showToast("Loading split details...");
+    await apiSyncSplitDetails();
+    // Setup WS
+    const wsUrl = `${WS_BASE.replace('http', 'ws')}/ws/${id}`;
+    initWebSocket(wsUrl);
+    goTo('items');
+  } else {
+    showToast("Offline: cannot fetch remote split.");
+  }
+}
+
+async function apiSyncSplitDetails() {
+  if (!backendOnline || !activeSplitId) return;
+  try {
+    const r = await fetch(`${API_BASE}/splits/${activeSplitId}`);
+    if (r.ok) {
+      const data = await r.json();
+      activeSplitName = data.split.restaurant || data.split.name;
+      document.getElementById('items-rest-display').textContent = activeSplitName;
+      TAX_RATE = data.split.tax / Math.max(1, data.split.total_amount - data.split.tax - data.split.tip) || 0.08;
+      TIP_RATE = data.split.tip / Math.max(1, data.split.total_amount - data.split.tax - data.split.tip) || 0.10;
+
+      // Update PEOPLE from backend
+      PEOPLE = data.participants.map((p, idx) => ({
+        id: idx,
+        apiId: p.id,
+        name: p.name,
+        emoji: p.emoji,
+        color: colors[idx % colors.length],
+        upi: p.upi_id
+      }));
+
+      // Update ITEMS
+      ITEMS = data.items.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        qty: item.quantity,
+        emoji: item.emoji
+      }));
+
+      // Update assignments
+      assignments = {};
+      data.assignments.forEach(asg => {
+        if (!assignments[asg.item_id]) assignments[asg.item_id] = [];
+        const personIdx = PEOPLE.findIndex(p => p.apiId === asg.participant_id);
+        if (personIdx !== -1) {
+          assignments[asg.item_id].push(personIdx);
+        }
+      });
+
+      renderItems();
+      updateMySubtotal();
+    }
+  } catch(e) {
+    console.warn("Sync details failed:", e);
+  }
+}
+
+function initWebSocket(wsUrl) {
+  if (activeWs) activeWs.close();
+  console.log("Connecting WebSocket:", wsUrl);
+  activeWs = new WebSocket(wsUrl);
+
+  activeWs.onmessage = async (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.type === 'receipt_parsed') {
+        showToast("Receipt parsed by AI! ✨");
+        if (data.restaurant) {
+          activeSplitName = data.restaurant;
+          document.getElementById('items-rest-display').textContent = activeSplitName;
+        }
+        await apiSyncSplitDetails();
+        goTo('items');
+      } else if (data.type === 'item_assigned') {
+        const itemId = data.item_id;
+        const participantIds = data.participant_ids;
+        assignments[itemId] = participantIds
+          .map(pid => PEOPLE.findIndex(p => p.apiId === pid))
+          .filter(idx => idx !== -1);
+        renderItems();
+        updateMySubtotal();
+      } else if (data.type === 'guest_paying') {
+        showToast(`Guest "${data.guest_name}" paid ₹${data.amount.toLocaleString('en-IN')}! 💸`);
+        if (currentScreen === 'summary') renderSummary();
+      }
+    } catch(e) {
+      console.warn("WebSocket parse error:", e);
+    }
+  };
+
+  activeWs.onclose = () => {
+    console.log("WebSocket closed. Attempting reconnect...");
+    setTimeout(() => {
+      if (activeSplitId && backendOnline) {
+        initWebSocket(`${WS_BASE.replace('http', 'ws')}/ws/${activeSplitId}`);
+      }
+    }, 3000);
+  };
+}
+
+function wsBroadcast(payload) {
+  if (activeWs && activeWs.readyState === WebSocket.OPEN) {
+    activeWs.send(JSON.stringify(payload));
+  }
+}
+
+async function apiAssignItem(itemId, backendIds) {
+  if (!backendOnline || !activeSplitId) return;
+  try {
+    await fetch(`${API_BASE}/splits/${activeSplitId}/items/${itemId}/assign`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ participant_ids: backendIds })
+    });
+  } catch(e) {
+    console.warn("Assign sync failed:", e);
+  }
+}
+
+// ── CONFIRM SPLIT SETUP ────────────────────────────────────────────────────────
+async function confirmSplitSetup(method) {
+  await apiCreateSplit();
+
+  if (method === 'scan') {
+    goTo('scan');
+  } else {
+    renderItems();
+    goTo('items');
+  }
+}
+
+// ── FILE UPLOAD RECEIPT PARSING ────────────────────────────────────────────────
+function triggerFileSelect() {
+  document.getElementById('receipt-file-input').click();
+}
+
+document.getElementById('receipt-file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    await handleReceiptUpload(file);
+  }
+});
+
+async function handleReceiptUpload(file) {
+  if (!file) return;
+
+  goTo('processing');
+
+  // Reset steps UI
+  document.getElementById('pstep1').className = 'proc-step-icon done';
+  document.getElementById('pstep1').innerHTML = '✅';
+  document.getElementById('pstep2').className = 'proc-step-icon active';
+  document.getElementById('pstep2indicator').className = 'proc-spinner';
+  document.getElementById('pstep2label').innerHTML = 'Reading line items';
+  document.getElementById('pstep3').className = 'proc-step-icon pending';
+  document.getElementById('pstep3indicator').innerHTML = '';
+  document.getElementById('pstep3label').innerHTML = '<span>Calculating totals</span>';
+  document.getElementById('pstep4').className = 'proc-step-icon pending';
+  document.getElementById('pstep4indicator').innerHTML = '';
+  document.getElementById('pstep4label').innerHTML = '<span>Building split view</span>';
+
+  // Check backend and upload
+  if (backendOnline && activeSplitId) {
+    const formData = new FormData();
+    formData.append('receipt', file);
+
+    try {
+      const resp = await fetch(`${API_BASE}/splits/${activeSplitId}/receipt`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (resp.ok) {
+        const data = await resp.json();
+        console.log("Scan parsed:", data);
+
+        // Update UI steps
+        document.getElementById('pstep2').className = 'proc-step-icon done';
+        document.getElementById('pstep2').innerHTML = '✅';
+        document.getElementById('pstep2label').innerHTML = `Found ${data.items.length} items ✓`;
+        document.getElementById('pstep2indicator').innerHTML = '<div class="proc-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>';
+
+        document.getElementById('pstep3').className = 'proc-step-icon done';
+        document.getElementById('pstep3').innerHTML = '✅';
+        document.getElementById('pstep3label').innerHTML = 'Tax & tip calculated ✓';
+        document.getElementById('pstep3indicator').innerHTML = '<div class="proc-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>';
+
+        document.getElementById('pstep4').className = 'proc-step-icon done';
+        document.getElementById('pstep4').innerHTML = '✅';
+        document.getElementById('pstep4label').innerHTML = 'Ready to split ✓';
+        document.getElementById('pstep4indicator').innerHTML = '<div class="proc-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>';
+
+        // Load details
+        await apiSyncSplitDetails();
+
+        // Update split total in history
+        updateSplitAmountInHistory(activeSplitId, data.totals.total);
+
+        setTimeout(() => goTo('items'), 800);
+      } else {
+        const err = await resp.json();
+        showToast(`AI Failed: ${err.error || 'Server error'}. Using offline fallback.`);
+        startProcessingMock();
+      }
+    } catch(e) {
+      console.warn("Upload connection failed. Using offline fallback:", e);
+      startProcessingMock();
+    }
+  } else {
+    showToast("Demo Mode: Using dynamic local generator...");
+    startProcessingMock();
+  }
+}
+
+function updateSplitAmountInHistory(id, amount) {
+  try {
+    let splits = JSON.parse(localStorage.getItem('wise_splits') || '[]');
+    splits = splits.map(s => {
+      if (s.id === id) {
+        s.amount = Math.round(amount);
+      }
+      return s;
+    });
+    localStorage.setItem('wise_splits', JSON.stringify(splits));
+    renderRecentSplits();
+  } catch(e) {}
+}
+
+// Simulated dynamic mock receipt parser based on typed restaurant name
+function startProcessingMock() {
+  const restName = activeSplitName || "Meal Split";
+  const mockItems = generateMockItems(restName);
+
+  TAX_RATE = 0.08;
+  TIP_RATE = 0.10;
+
+  // Insert mock items
+  ITEMS = mockItems.map((item, idx) => ({
+    id: 'mock_item_' + idx,
+    name: item.name,
+    price: item.price,
+    qty: 1,
+    emoji: item.emoji
+  }));
+
+  // Assign to host by default
+  assignments = {};
+  ITEMS.forEach(it => {
+    assignments[it.id] = [0];
+  });
+
+  setTimeout(() => {
+    document.getElementById('pstep2').className = 'proc-step-icon done';
+    document.getElementById('pstep2').innerHTML = '✅';
+    document.getElementById('pstep2label').innerHTML = `Found ${ITEMS.length} items ✓`;
+    document.getElementById('pstep2indicator').innerHTML = '<div class="proc-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>';
+    
+    document.getElementById('pstep3').className = 'proc-step-icon active';
+    document.getElementById('pstep3label').innerHTML = 'Calculating totals';
+    document.getElementById('pstep3indicator').className = 'proc-spinner';
+  }, 1000);
+
+  setTimeout(() => {
+    document.getElementById('pstep3').className = 'proc-step-icon done';
+    document.getElementById('pstep3').innerHTML = '✅';
+    document.getElementById('pstep3label').innerHTML = 'Tax & tip detected ✓';
+    document.getElementById('pstep3indicator').innerHTML = '<div class="proc-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>';
+    
+    document.getElementById('pstep4').className = 'proc-step-icon active';
+    document.getElementById('pstep4label').innerHTML = 'Building split view';
+    document.getElementById('pstep4indicator').className = 'proc-spinner';
+  }, 2000);
+
+  setTimeout(() => {
+    document.getElementById('pstep4').className = 'proc-step-icon done';
+    document.getElementById('pstep4').innerHTML = '✅';
+    document.getElementById('pstep4label').innerHTML = 'Ready to split ✓';
+    document.getElementById('pstep4indicator').innerHTML = '<div class="proc-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>';
+    
+    const billTotal = ITEMS.reduce((s, i) => s + i.price, 0);
+    const finalTotal = billTotal * (1 + TAX_RATE + TIP_RATE);
+    updateSplitAmountInHistory(activeSplitId || 'demo', finalTotal);
+
+    setTimeout(() => {
+      renderItems();
+      updateMySubtotal();
+      goTo('items');
+    }, 500);
+  }, 3000);
+}
+
+function generateMockItems(restaurant) {
+  const rest = (restaurant || '').toLowerCase();
+  if (rest.includes('pizza') || rest.includes('hut') || rest.includes('slice')) {
+    return [
+      { name: 'Pepperoni Supreme Pizza', price: 900, emoji: '🍕' },
+      { name: 'Cheesy Garlic Bread', price: 300, emoji: '🥖' },
+      { name: 'Garden Veggie Salad', price: 450, emoji: '🥗' },
+      { name: 'Coca Cola Pitcher', price: 200, emoji: '🥤' }
+    ];
+  } else if (rest.includes('coffee') || rest.includes('cafe') || rest.includes('starbucks') || rest.includes('blue')) {
+    return [
+      { name: 'Espresso Latte', price: 280, emoji: '☕' },
+      { name: 'Butter Croissant', price: 180, emoji: '🥐' },
+      { name: 'Avocado Toast', price: 420, emoji: '🥑' },
+      { name: 'Iced Matcha Tea', price: 320, emoji: '🍵' }
+    ];
+  } else if (rest.includes('bbq') || rest.includes('grill') || rest.includes('quarters') || rest.includes('korean')) {
+    return [
+      { name: 'LA Cut Beef Galbi', price: 2800, emoji: '🥩' },
+      { name: 'Spicy Garlic Pork Belly', price: 2200, emoji: '🐷' },
+      { name: 'Pork Samgyeopsal', price: 2400, emoji: '🍖' },
+      { name: 'Soju Bottle', price: 900, emoji: '🍶' },
+      { name: 'Sprite Can', price: 150, emoji: '🥤' }
+    ];
+  } else {
+    return [
+      { name: 'Chef Special Entree', price: 1400, emoji: '🍲' },
+      { name: 'Signature Appetizer Platter', price: 800, emoji: '🍟' },
+      { name: 'Organic Green Salad', price: 400, emoji: '🥗' },
+      { name: 'House Red Wine', price: 650, emoji: '🍷' },
+      { name: 'Sparkling Soda', price: 150, emoji: '🥤' }
+    ];
+  }
+}
+
+// ── UTILS & HANDLERS ──────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function copyLink() {
+  const label = document.getElementById('copy-label');
+  const link = document.querySelector('.share-link-box span').textContent;
+  navigator.clipboard.writeText(link).catch(() => {});
+  if (label) {
+    label.textContent = 'Copied! ✓';
+    label.style.color = 'var(--green)';
+    showToast('Link copied to clipboard! 📋');
+    setTimeout(() => { label.textContent = 'Copy'; label.style.color = ''; }, 2000);
+  }
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tab-all').className = `tab ${tab==='all'?'active':'inactive'}`;
+  document.getElementById('tab-you').className = `tab ${tab==='you'?'active':'inactive'}`;
+  document.getElementById('tab-unassigned').className = `tab ${tab==='unassigned'?'active':'inactive'}`;
+  renderItems();
+}
+
+function toggleItemAssignment(itemId) {
+  const arr = assignments[itemId] || [];
+  const idx = arr.indexOf(selectedPerson);
+  if (idx > -1) {
+    assignments[itemId] = arr.filter(x => x !== selectedPerson);
+  } else {
+    assignments[itemId] = [...arr, selectedPerson];
+  }
+  renderItems();
+  updateMySubtotal();
+
+  // Sync to backend
+  if (backendOnline && activeSplitId) {
+    const assigned = assignments[itemId] || [];
+    const backendIds = assigned
+      .map(idx => PEOPLE[idx]?.apiId)
+      .filter(Boolean);
+    apiAssignItem(itemId, backendIds).catch(() => {});
+    wsBroadcast({
+      type: 'item_assigned',
+      split_id: activeSplitId,
+      item_id: itemId,
+      participant_ids: backendIds
+    });
+  }
+}
+
+function selectPerson(idx) {
+  selectedPerson = idx;
+  renderItems();
+}
+
+function renderItems() {
+  const list = document.getElementById('items-list');
+  if (!list) return;
+  let visibleItems = ITEMS;
+  if (currentTab === 'you') visibleItems = ITEMS.filter(it => (assignments[it.id]||[]).includes(0));
+  if (currentTab === 'unassigned') visibleItems = ITEMS.filter(it => (assignments[it.id]||[]).length === 0);
+
+  // Render people chips dynamically
+  const paxRow = document.getElementById('pax-row');
+  if (paxRow) {
+    paxRow.innerHTML = PEOPLE.map((p, idx) => `
+      <div class="pax-chip" onclick="selectPerson(${idx})">
+        <div class="pax-ava ${selectedPerson === idx ? 'selected' : ''}" id="pax-${idx}" style="background:${p.color}">${p.emoji}</div>
+        <div class="pax-chip-name">${p.name.split(' ')[0]}</div>
+      </div>
+    `).join('') + `
+      <div class="pax-chip" onclick="goTo('setup-split')">
+        <div class="pax-add">+</div>
+        <div class="pax-chip-name">Edit</div>
+      </div>
+    `;
+  }
+
+  list.innerHTML = visibleItems.map(item => {
+    const assigned = assignments[item.id] || [];
+    const isMine = assigned.includes(selectedPerson);
+    const avatars = assigned.map(pid => {
+      const p = PEOPLE[pid];
+      if (!p) return '';
+      return `<div class="item-avatar" style="background:${p.color}">${p.emoji}</div>`;
+    }).join('');
+
+    return `
+      <div class="item-row" onclick="toggleItemAssignment('${item.id}')">
+        <div class="item-check ${isMine ? 'checked' : ''}">
+          ${isMine ? '✓' : ''}
+        </div>
+        <div class="item-info">
+          <div class="item-name">${item.name}</div>
+          <div class="item-qty">Qty ${item.qty} · ${avatars ? 'shared' : 'unassigned'}</div>
+          <div class="item-assignees">${avatars}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="item-price">₹${Math.round(item.price).toLocaleString('en-IN')}</div>
+          <button onclick="editItem('${item.id}', event)" style="background:none;border:none;color:var(--text3);font-size:12px;">✏️</button>
+          <button onclick="deleteItem('${item.id}', event)" style="background:none;border:none;color:var(--red);font-size:12px;">×</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Update footer summary
+  const billTotal = ITEMS.reduce((s, i) => s + i.price, 0);
+  document.getElementById('items-bill-total').textContent = '₹' + Math.round(billTotal).toLocaleString('en-IN');
+}
+
+function updateMySubtotal() {
+  let total = 0;
+  ITEMS.forEach(item => {
+    const assigned = assignments[item.id] || [];
+    if (assigned.includes(0)) {
+      total += item.price / Math.max(1, assigned.length);
+    }
+  });
+  document.getElementById('my-subtotal').textContent = '₹' + Math.round(total).toLocaleString('en-IN');
+}
+
+function calcPersonTotal(personId) {
+  let subtotal = 0;
+  ITEMS.forEach(item => {
+    const assigned = assignments[item.id] || [];
+    if (assigned.includes(personId)) {
+      subtotal += item.price / assigned.length;
+    }
+  });
+  return subtotal;
+}
+
+function renderSummary() {
+  const billSubtotal = ITEMS.reduce((s, i) => s + i.price, 0);
+  const taxAbs = billSubtotal * TAX_RATE;
+  const tipAbs = billSubtotal * TIP_RATE;
+  const billTotal = billSubtotal + taxAbs + tipAbs;
+
+  // Update bottom total card
+  document.querySelector('.summary-total-card .stc-row:nth-child(1) .stc-val').textContent = '₹' + Math.round(billSubtotal).toLocaleString('en-IN');
+  document.querySelector('.summary-total-card .stc-row:nth-child(2) .stc-val').textContent = '₹' + Math.round(taxAbs).toLocaleString('en-IN');
+  document.querySelector('.summary-total-card .stc-row:nth-child(3) .stc-val').textContent = '₹' + Math.round(tipAbs).toLocaleString('en-IN');
+  document.querySelector('.stc-total-val').textContent = '₹' + Math.round(billTotal).toLocaleString('en-IN');
+
+  const cards = document.getElementById('person-cards');
+  if (!cards) return;
+
+  cards.innerHTML = PEOPLE.map(person => {
+    const subtotal = calcPersonTotal(person.id);
+    const taxShare = subtotal * TAX_RATE;
+    const tipShare = subtotal * TIP_RATE;
+    const total = Math.round(subtotal + taxShare + tipShare);
+
+    const myItems = ITEMS.filter(it => (assignments[it.id]||[]).includes(person.id));
+    const itemNames = myItems.slice(0, 2).map(i => i.name).join(', ') + (myItems.length > 2 ? ` +${myItems.length-2}` : '');
+    const isYou = person.id === 0;
+
+    return `
+      <div class="person-card" id="person-card-${person.id}">
+        <div class="person-card-header">
+          <div class="person-card-ava" style="background:${person.color}">${person.emoji}</div>
+          <div class="person-card-info">
+            <div class="person-card-name">${person.name}</div>
+            <div class="person-card-items">${itemNames || 'No items'}</div>
+          </div>
+          <div class="person-card-amount">₹${total.toLocaleString('en-IN')}</div>
+        </div>
+        <div class="person-card-breakdown">
+          <div class="breakdown-row"><span>Food & drinks</span><span>₹${Math.round(subtotal).toLocaleString('en-IN')}</span></div>
+          <div class="breakdown-row"><span>Tax share</span><span>₹${Math.round(taxShare).toLocaleString('en-IN')}</span></div>
+          <div class="breakdown-row"><span>Tip share</span><span>₹${Math.round(tipShare).toLocaleString('en-IN')}</span></div>
+          <div class="breakdown-row total"><span>Total</span><span>₹${total.toLocaleString('en-IN')}</span></div>
+        </div>
+        <div class="pay-btns">
+          ${isYou ? 
+            `<button class="pay-btn paid" style="flex:1">✓ You paid the bill</button>` :
+            `<button class="pay-btn upi" style="flex:2" onclick="triggerUPI(${person.id}, ${total})">🇮🇳 Request via UPI</button>
+             <button class="pay-btn link" style="flex:1" onclick="showToast('Link sent to ${person.name}! 🔗')">🔗 Link</button>`
+          }
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Update summary header
+  const host = PEOPLE[0];
+  document.querySelector('.summary-hero .summary-title').textContent = activeSplitName;
+  document.querySelector('.summary-hero .summary-sub').textContent = `Today · ${PEOPLE.length} people · ${host ? host.name : 'You'} paid`;
+}
+
+function triggerUPI(personId, amount) {
+  const person = PEOPLE[personId];
+  if (!person) return;
+  const host = PEOPLE[0];
+  const hostUpi = host ? (host.upi || 'host@upi') : 'host@upi';
+  const upiLink = `upi://pay?pa=${hostUpi}&pn=${encodeURIComponent(host ? host.name : 'WiseHost')}&am=${amount}&tn=${encodeURIComponent(activeSplitName)}`;
+
+  console.log("UPI Link:", upiLink);
+  showToast(`UPI request sent to ${person.name} for ₹${amount.toLocaleString('en-IN')} 📩`);
+}
+
+// Edit restaurant title
+async function editRestaurantName() {
+  const newName = prompt("Edit split/restaurant title:", activeSplitName);
+  if (newName && newName.trim()) {
+    activeSplitName = newName.trim();
+    document.getElementById('items-rest-display').textContent = activeSplitName;
+    showToast(`Title updated to ${activeSplitName} ✓`);
+
+    if (backendOnline && activeSplitId) {
+      try {
+        await fetch(`${API_BASE}/splits/${activeSplitId}/update`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ restaurant: activeSplitName, tax: null, tip: null })
+        });
+      } catch(e) {
+        console.warn("Edit restaurant name failed:", e);
+      }
+    }
+  }
+}
+
+// Add manual item
+async function addManualItem() {
+  const nameInput = document.getElementById('new-item-name');
+  const priceInput = document.getElementById('new-item-price');
+  const name = nameInput.value.trim();
+  const price = parseFloat(priceInput.value);
+
+  if (!name || isNaN(price) || price <= 0) {
+    showToast("Please enter a valid item name and price!");
+    return;
+  }
+
+  const itemId = 'item_' + Date.now();
+  const emojis = ['🍔', '🍕', '🥗', '🍲', '☕', '🍰', '🥤', '🍟', '🍜', '🍝'];
+  const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+  const newItem = {
+    id: itemId,
+    name: name,
+    price: price,
+    qty: 1,
+    emoji: emoji
+  };
+
+  ITEMS.push(newItem);
+  assignments[newItem.id] = [0];
+
+  nameInput.value = '';
+  priceInput.value = '';
+
+  renderItems();
+  updateMySubtotal();
+  showToast(`Added ${name} ✓`);
+
+  if (backendOnline && activeSplitId) {
+    try {
+      const resp = await fetch(`${API_BASE}/splits/${activeSplitId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, price, quantity: 1, emoji })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        newItem.id = data.item_id;
+        assignments[data.item_id] = [0];
+        delete assignments[itemId];
+
+        // Sync assignment
+        const pId = PEOPLE[0].apiId || 'host';
+        apiAssignItem(data.item_id, [pId]);
+      }
+    } catch(e) {
+      console.warn("Manual item sync failed:", e);
+    }
+  }
+}
+
+// Edit item
+async function editItem(itemId, event) {
+  if (event) event.stopPropagation();
+  const item = ITEMS.find(it => it.id === itemId);
+  if (!item) return;
+
+  const newName = prompt("Edit item name:", item.name);
+  if (!newName || !newName.trim()) return;
+
+  const newPriceStr = prompt("Edit item price (₹):", item.price);
+  const newPrice = parseFloat(newPriceStr);
+  if (isNaN(newPrice) || newPrice <= 0) return;
+
+  item.name = newName.trim();
+  item.price = newPrice;
+
+  renderItems();
+  updateMySubtotal();
+  showToast("Item updated ✓");
+
+  if (backendOnline && activeSplitId) {
+    try {
+      await fetch(`${API_BASE}/splits/${activeSplitId}/items/${itemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: item.name, price: item.price })
+      });
+    } catch(e) {
+      console.warn("Item edit sync failed:", e);
+    }
+  }
+}
+
+// Delete item
+async function deleteItem(itemId, event) {
+  if (event) event.stopPropagation();
+  const idx = ITEMS.findIndex(it => it.id === itemId);
+  if (idx === -1) return;
+
+  const name = ITEMS[idx].name;
+  ITEMS.splice(idx, 1);
+  delete assignments[itemId];
+
+  renderItems();
+  updateMySubtotal();
+  showToast(`Deleted ${name} ✓`);
+
+  if (backendOnline && activeSplitId) {
+    try {
+      await fetch(`${API_BASE}/splits/${activeSplitId}/items/${itemId}`, { method: 'DELETE' });
+    } catch(e) {
+      console.warn("Item delete sync failed:", e);
+    }
+  }
+}
+
+// Edit Tax / Tip shares
+function editTaxTip() {
+  const newTax = prompt("Enter Tax percentage (e.g. 8 for 8%):", TAX_RATE * 100);
+  if (newTax !== null) {
+    TAX_RATE = parseFloat(newTax) / 100;
+  }
+  const newTip = prompt("Enter Tip percentage (e.g. 10 for 10%):", TIP_RATE * 100);
+  if (newTip !== null) {
+    TIP_RATE = parseFloat(newTip) / 100;
+  }
+  renderSummary();
+  showToast("Tax & tip rates updated ✓");
+
+  if (backendOnline && activeSplitId) {
+    const billSubtotal = ITEMS.reduce((s, i) => s + i.price, 0);
+    const taxAbs = billSubtotal * TAX_RATE;
+    const tipAbs = billSubtotal * TIP_RATE;
+    try {
+      fetch(`${API_BASE}/splits/${activeSplitId}/update`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ restaurant: activeSplitName, tax: taxAbs, tip: tipAbs })
+      });
+    } catch(e) {
+      console.warn("Update tax/tip failed:", e);
+    }
+  }
+}
+
+// ── GUEST ROUTE ────────────────────────────────────────────────────────────────
+async function renderGuest() {
+  const list = document.getElementById('guest-items-list');
+  if (!list) return;
+
+  if (backendOnline && activeGuestToken) {
+    try {
+      const resp = await fetch(`${API_BASE}/guest/${activeGuestToken}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        activeSplitName = data.restaurant || data.name;
+        document.getElementById('guest-sub').innerHTML = `From <strong>${activeSplitName}</strong>`;
+        document.querySelector('.guest-host-note span:nth-child(2)').innerHTML = `<strong>${data.host.name}</strong> fronted the bill. Select what you ordered and pay your share instantly.`;
+        document.getElementById('guest-pay-btn').textContent = `💸   Pay ${data.host.name}`;
+
+        ITEMS = data.items.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          qty: item.quantity,
+          emoji: item.emoji
+        }));
+      }
+    } catch(e) {
+      console.warn("Guest view fetch failed:", e);
+    }
+  } else {
+    document.getElementById('guest-sub').innerHTML = `From <strong>${activeSplitName || 'Demo Split'}</strong>`;
+  }
+
+  list.innerHTML = ITEMS.map(item => {
+    const isSel = guestSelectedItems.has(item.id);
+    return `
+      <div class="guest-item" onclick="toggleGuestItem('${item.id}')">
+        <div class="guest-item-sel ${isSel ? 'on' : ''}">${isSel ? '✓' : ''}</div>
+        <div class="guest-item-name">${item.emoji} ${item.name}</div>
+        <div class="guest-item-price">₹${Math.round(item.price).toLocaleString('en-IN')}</div>
+      </div>
+    `;
+  }).join('');
+
+  updateGuestTotal();
+}
+
+function toggleGuestItem(itemId) {
+  if (guestSelectedItems.has(itemId)) {
+    guestSelectedItems.delete(itemId);
+  } else {
+    guestSelectedItems.add(itemId);
+  }
+  renderGuest();
+  updateGuestTotal();
+}
+
+function updateGuestTotal() {
+  let subtotal = 0;
+  ITEMS.forEach(it => {
+    if (guestSelectedItems.has(it.id)) {
+      subtotal += it.price;
+    }
+  });
+  const taxShare = subtotal * TAX_RATE;
+  const tipShare = subtotal * TIP_RATE;
+  const total = Math.round(subtotal + taxShare + tipShare);
+  document.getElementById('guest-total').textContent = '₹' + total.toLocaleString('en-IN');
+}
+
+function goToPayment() {
+  const totalStr = document.getElementById('guest-total').textContent.replace(/[^0-9.]/g, '');
+  const total = parseFloat(totalStr) || 0;
+  if (total <= 0) {
+    showToast("Please select at least 1 item to pay!");
+    return;
+  }
+
+  const host = PEOPLE[0];
+  document.getElementById('pay-amount-display').textContent = '₹' + total.toLocaleString('en-IN');
+  document.querySelector('.pay-to').textContent = `to ${host ? host.name : 'Host'} · ${activeSplitName}`;
+  document.getElementById('pay-success-sub-text').innerHTML = `Payment sent to ${host ? host.name : 'Host'}.<br/>Your friends can see this too.`;
+  goTo('payment');
+}
+
+function selectMethod(el) {
+  document.querySelectorAll('.pay-method').forEach(m => m.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+window.doPayment = async function() {
+  const btn = document.getElementById('pay-now-btn');
+  btn.innerHTML = '⏳ Processing…';
+  btn.disabled = true;
+
+  if (backendOnline && activeGuestToken) {
+    const amountStr = document.getElementById('pay-amount-display').textContent.replace(/[^0-9.]/g, '');
+    const amount = parseFloat(amountStr) || 0;
+    const selectedIds = Array.from(guestSelectedItems).map(id => String(id));
+    
+    try {
+      const resp = await fetch(`${API_BASE}/guest/${activeGuestToken}/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Guest',
+          amount: amount,
+          item_ids: selectedIds
+        })
+      });
+      if (resp.ok) {
+        const result = await resp.json();
+        showToast(`UPI ID: ${result.upi_id}. Opening link...`);
+      }
+    } catch(e) {
+      console.warn("Guest payment API failed:", e);
+    }
+  }
+
+  setTimeout(() => {
+    document.getElementById('pay-success').classList.add('show');
+    spawnConfetti();
+  }, 1200);
+};
+
+// ── CONFETTI & UI EFFECTS ─────────────────────────────────────────────────────
+function spawnConfetti() {
+  const container = document.getElementById('confetti');
+  if (!container) return;
+  container.innerHTML = '';
+  const colors = ['#7C6FFF', '#22D3A3', '#F59E0B', '#F87171', '#A78BFA'];
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.cssText = `
+      left: ${Math.random()*100}%;
+      top: -20px;
+      background: ${colors[Math.floor(Math.random()*colors.length)]};
+      width: ${4+Math.random()*8}px;
+      height: ${4+Math.random()*8}px;
+      animation-duration: ${1.5+Math.random()*2}s;
+      animation-delay: ${Math.random()*0.5}s;
+      border-radius: ${Math.random()>0.5 ? '50%' : '2px'};
+    `;
+    container.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+}
+
+// ── NAVIGATOR ROUTING ─────────────────────────────────────────────────────────
+function goTo(screenId) {
+  const prev = document.getElementById(currentScreen);
+  const next = document.getElementById(screenId);
+  if (currentScreen === screenId) return;
+
+  if (prev) {
+    prev.classList.add('slide-left');
+    prev.classList.remove('active');
+    setTimeout(() => prev.classList.remove('slide-left'), 400);
+  }
+
+  if (next) {
+    next.classList.add('active');
+  }
+
+  historyStack.push(screenId);
+  currentScreen = screenId;
+
+  if (screenId === 'setup-split') initSetupFriends();
+  if (screenId === 'items') renderItems();
+  if (screenId === 'summary') renderSummary();
+  if (screenId === 'guest') renderGuest();
+}
+
+function goBack() {
+  if (historyStack.length <= 1) return;
+  historyStack.pop();
+  const target = historyStack[historyStack.length - 1];
+
+  const prev = document.getElementById(currentScreen);
+  const next = document.getElementById(target);
+
+  if (prev) {
+    prev.style.transition = 'opacity 0.3s, transform 0.3s';
+    prev.style.opacity = '0';
+    prev.style.transform = 'translateX(30px)';
+    setTimeout(() => {
+      prev.classList.remove('active');
+      prev.style.transition = '';
+      prev.style.opacity = '';
+      prev.style.transform = '';
+    }, 300);
+  }
+
+  if (next) {
+    next.classList.add('active');
+  }
+  currentScreen = target;
+  if (target === 'items') renderItems();
+}
+
+// ── INIT ON PAGE LOAD ────────────────────────────────────────────────────────
+document.getElementById('btn-scan-receipt').addEventListener('click', () => {
+  if (!activeSplitId) {
+    goTo('setup-split');
+    showToast("Please set up the split details first! 📝");
+  } else {
+    goTo('scan');
+  }
+});
+
+// Load saved settings
+const savedHostName = localStorage.getItem('wise_host_name') || '';
+const savedHostUpi = localStorage.getItem('wise_host_upi') || '';
+document.getElementById('setup-host-name').value = savedHostName;
+document.getElementById('setup-host-upi').value = savedHostUpi;
+document.getElementById('home-username').textContent = (savedHostName || 'Tap to set name') + ' ✌️';
+
+// Setup friends input defaults
+setupFriends = [
+  { name: 'Loren', emoji: '🧑', upi: 'loren@ybl' },
+  { name: 'Anthony', emoji: '👦', upi: 'anthony@okicici' },
+  { name: 'Sara', emoji: '👩', upi: 'sara@paytm' }
+];
+
+renderRecentSplits();
+
+// Check backend status
+detectBackend().then(online => {
+  if (online) {
+    console.log("Connected to live backend.");
+  }
+});
+
+// Update clock
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours().toString().padStart(2,'0');
+  const m = now.getMinutes().toString().padStart(2,'0');
+  const clockEl = document.querySelector('.status-time');
+  if (clockEl) clockEl.textContent = `${h}:${m}`;
+}
+updateClock();
+setInterval(updateClock, 30000);
+</script>
+</body>
+</html>

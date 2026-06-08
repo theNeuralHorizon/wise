@@ -1,0 +1,22 @@
+# Cargo build files
+**/target/
+**/*.rs.bk
+
+# SQLite databases
+**/*.db
+**/*.db-wal
+**/*.db-shm
+
+# Environment config and keys
+**/.env
+
+# Python byte-code / cache
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Operating System files
+.DS_Store
+Thumbs.db
+desktop.ini
