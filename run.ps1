@@ -36,7 +36,10 @@ Write-Host ""
 Write-Host "[Info] Building Rust backend..." -ForegroundColor Cyan
 
 Push-Location backend
-cargo build --release 2>&1
+$oldPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+cargo build --release
+$ErrorActionPreference = $oldPreference
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[Error] Build failed. Check errors above." -ForegroundColor Red
     Pop-Location
