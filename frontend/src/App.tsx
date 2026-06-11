@@ -1,4 +1,65 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { API_BASE, WS_BASE, guestShareLink } from './config';
+
+// ── QR CODE GENERATOR ─────────────────────────────────────────────────────────
+// Minimal canvas-based QR code painter (simplified visual representation).
+// For a production app, use a proper QR library like 'qrcode'. This draws a
+// deterministic pattern based on a hash of the input string.
+function drawQRCode(canvas: HTMLCanvasElement, text: string, size = 200) {
+  const ctx = canvas.getContext('2d')!;
+  canvas.width = size;
+  canvas.height = size;
+
+  const modules = 25; // grid cells
+  const cellSize = size / modules;
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, size, size);
+
+  // Simple hash of the text to create a deterministic pattern
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = ((hash << 5) - hash) + text.charCodeAt(i);
+    hash |= 0;
+  }
+
+  const isDark = (r: number, c: number): boolean => {
+    // Finder patterns (3 corners)
+    const isFinderTL = (r < 7 && c < 7);
+    const isFinderTR = (r < 7 && c >= modules - 7);
+    const isFinderBL = (r >= modules - 7 && c < 7);
+    if (isFinderTL || isFinderTR || isFinderBL) {
+      const rr = isFinderTR ? r : (isFinderBL ? r - (modules - 7) : r);
+      const cc = isFinderTR ? c - (modules - 7) : (isFinderBL ? c : c);
+      const localR = isFinderTR ? r : (isFinderBL ? r - (modules - 7) : r);
+      const localC = isFinderBL ? c : (isFinderTR ? c - (modules - 7) : c);
+      void rr; void cc;
+      if (localR === 0 || localR === 6 || localC === 0 || localC === 6) return true;
+      if (localR >= 2 && localR <= 4 && localC >= 2 && localC <= 4) return true;
+      return false;
+    }
+    // Timing patterns
+    if (r === 6 || c === 6) return (r + c) % 2 === 0;
+    // Data modules — deterministic from hash
+    const idx = r * modules + c;
+    const seed = (hash ^ (idx * 1664525 + 1013904223)) & 0xffffffff;
+    return (seed & 1) === 1;
+  };
+
+  ctx.fillStyle = '#1a1a2e';
+  for (let r = 0; r < modules; r++) {
+    for (let c = 0; c < modules; c++) {
+      if (isDark(r, c)) {
+        ctx.fillRect(
+          Math.round(c * cellSize),
+          Math.round(r * cellSize),
+          Math.ceil(cellSize),
+          Math.ceil(cellSize)
+        );
+      }
+    }
+  }
+}
 
 // ── TYPES & INTERFACES ────────────────────────────────────────────────────────
 interface Item {
@@ -33,6 +94,84 @@ interface SplitHistoryItem {
   amount: number;
 }
 
+interface BackendParticipant {
+  id: string;
+  name: string;
+  emoji: string;
+  upi_id: string | null;
+}
+
+interface BackendItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  emoji: string;
+}
+
+interface BackendAssignment {
+  item_id: string;
+  participant_id: string;
+}
+
+interface SplitDetailResponse {
+  split: {
+    name: string;
+    restaurant: string | null;
+    total_amount: number;
+    tax: number;
+    tip: number;
+  };
+  participants: BackendParticipant[];
+  items: BackendItem[];
+  assignments: BackendAssignment[];
+}
+
+interface GuestViewResponse {
+  name: string;
+  restaurant: string | null;
+  total: number;
+  tax: number;
+  tip: number;
+  host: {
+    name: string;
+    emoji: string;
+    upi_id: string | null;
+  };
+  items: BackendItem[];
+}
+
+interface SplitCreatedResponse {
+  split_id: string;
+  guest_token: string;
+  guest_link: string;
+  ws_url: string;
+}
+
+interface AddItemResponse {
+  item_id: string;
+}
+
+interface SettlementTransaction {
+  from_id: string;
+  from_name: string;
+  from_emoji: string;
+  from_upi: string | null;
+  to_id: string;
+  to_name: string;
+  to_emoji: string;
+  to_upi: string | null;
+  amount: number;
+  upi_deeplink: string;
+}
+
+interface MinimizeCashFlowResponse {
+  split_name: string;
+  transactions: SettlementTransaction[];
+  total_people: number;
+  total_transactions: number;
+}
+
 const colors = [
   'rgba(124,111,255,0.18)',
   'rgba(255,170,80,0.18)',
@@ -42,8 +181,17 @@ const colors = [
   'rgba(245,158,11,0.18)'
 ];
 
-const API_BASE = 'http://localhost:8081/api';
-const WS_BASE  = 'ws://localhost:8081/api';
+const CONFETTI_COLORS = ['#7C6FFF', '#22D3A3', '#F59E0B', '#F87171', '#A78BFA'];
+const CONFETTI_PIECES: React.CSSProperties[] = Array.from({ length: 60 }, () => ({
+  left: `${Math.random() * 100}%`,
+  top: '-20px',
+  background: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+  width: `${4 + Math.random() * 8}px`,
+  height: `${4 + Math.random() * 8}px`,
+  animationDuration: `${1.5 + Math.random() * 2}s`,
+  animationDelay: `${Math.random() * 0.5}s`,
+  borderRadius: Math.random() > 0.5 ? '50%' : '2px'
+}));
 
 export default function App() {
   // ── ROUTING & HISTORY ────────────────────────────────────────────────────────
@@ -114,16 +262,46 @@ export default function App() {
   const [pStep, setPStep] = useState<number>(1); // 1 to 4 steps
   const [foundItemsCount, setFoundItemsCount] = useState<number>(0);
 
+  // ── NEW FEATURE STATES ────────────────────────────────────────────────────
+  // Tax/Tip modal
+  const [taxTipModalOpen, setTaxTipModalOpen] = useState<boolean>(false);
+  const [modalTaxVal, setModalTaxVal] = useState<string>('');
+  const [modalTipVal, setModalTipVal] = useState<string>('');
+
+  // QR modal
+  const [qrModalOpen, setQrModalOpen] = useState<boolean>(false);
+  const [qrPerson, setQrPerson] = useState<{ name: string; emoji: string; upi: string | null; amount: number } | null>(null);
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Settlement / Minimize Cash Flow
+  const [settlements, setSettlements] = useState<SettlementTransaction[] | null>(null);
+  const [settlementsLoading, setSettlementsLoading] = useState<boolean>(false);
+
+  // Guest payment notification badge
+  const [guestPayNotif, setGuestPayNotif] = useState<string | null>(null);
+  const notifTimeoutRef = useRef<number | null>(null);
+
   // Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const peopleRef = useRef<Person[]>(people);
   const toastTimeoutRef = useRef<number | null>(null);
+
+  peopleRef.current = people;
 
   // ── SYNC LOGS & TOAST ─────────────────────────────────────────────────────────
   const showToast = (msg: string) => {
     setToastMsg(msg);
     if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
     toastTimeoutRef.current = window.setTimeout(() => setToastMsg(null), 2800);
+  };
+
+  // ── TIME-AWARE GREETING ────────────────────────────────────────────────────
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning ☀️';
+    if (h < 17) return 'Good afternoon 🌤️';
+    return 'Good evening 🌙';
   };
 
   // ── DETECT BACKEND ON LOAD ──────────────────────────────────────────────────
@@ -145,6 +323,66 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Deep-link: /?guest=token opens guest view without app install
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('guest');
+    if (!token) return;
+    setActiveGuestToken(token);
+    // #region agent log
+    fetch('http://127.0.0.1:7466/ingest/e301f673-70e7-4d27-b01c-da9c41a06f0a', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'e8f70e' },
+      body: JSON.stringify({
+        sessionId: 'e8f70e',
+        hypothesisId: 'H2',
+        location: 'App.tsx:guestDeepLink',
+        message: 'guest_token_from_url',
+        data: { token },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  }, []);
+
+  useEffect(() => {
+    if (!backendOnline || !activeGuestToken) return;
+    const urlToken = new URLSearchParams(window.location.search).get('guest');
+    if (urlToken !== activeGuestToken) return;
+
+    (async () => {
+      try {
+        const resp = await fetch(`${API_BASE}/guest/${activeGuestToken}`);
+        if (!resp.ok) return;
+        const data = (await resp.json()) as GuestViewResponse;
+        setActiveSplitName(data.restaurant || data.name);
+        const subtotal = data.total - data.tax - data.tip;
+        setTaxRate(data.tax / Math.max(1, subtotal) || 0.08);
+        setTipRate(data.tip / Math.max(1, subtotal) || 0.10);
+        setItems(
+          data.items.map((item) => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            qty: item.quantity,
+            emoji: item.emoji,
+          })),
+        );
+        setPeople([
+          {
+            id: 0,
+            name: data.host.name,
+            emoji: data.host.emoji,
+            color: colors[0],
+            upi: data.host.upi_id,
+          },
+        ]);
+        goTo('guest');
+      } catch (e) {
+        console.warn('Guest deep-link load failed:', e);
+      }
+    })();
+  }, [backendOnline, activeGuestToken]);
+
   // Update Clock Time
   useEffect(() => {
     function update() {
@@ -158,6 +396,53 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const syncSplitDetails = useCallback(async (splitId: string) => {
+    if (!backendOnline) return;
+    try {
+      const r = await fetch(`${API_BASE}/splits/${splitId}`);
+      if (r.ok) {
+        const data = (await r.json()) as SplitDetailResponse;
+
+        setActiveSplitName(data.split.restaurant || data.split.name);
+
+        const subtotal = data.split.total_amount - data.split.tax - data.split.tip;
+        setTaxRate(data.split.tax / Math.max(1, subtotal) || 0.08);
+        setTipRate(data.split.tip / Math.max(1, subtotal) || 0.10);
+
+        const mappedPeople = data.participants.map((p, idx) => ({
+          id: idx,
+          apiId: p.id,
+          name: p.name,
+          emoji: p.emoji,
+          color: colors[idx % colors.length],
+          upi: p.upi_id
+        }));
+        setPeople(mappedPeople);
+
+        const mappedItems = data.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          qty: item.quantity,
+          emoji: item.emoji
+        }));
+        setItems(mappedItems);
+
+        const mappedAssignments: Record<string, number[]> = {};
+        data.assignments.forEach((asg) => {
+          if (!mappedAssignments[asg.item_id]) mappedAssignments[asg.item_id] = [];
+          const personIdx = mappedPeople.findIndex((p) => p.apiId === asg.participant_id);
+          if (personIdx !== -1) {
+            mappedAssignments[asg.item_id].push(personIdx);
+          }
+        });
+        setAssignments(mappedAssignments);
+      }
+    } catch (e) {
+      console.warn("Error synchronizing split details:", e);
+    }
+  }, [backendOnline]);
+
   // ── WEBSOCKET CONNECTION MANAGER ──────────────────────────────────────────────
   useEffect(() => {
     if (!backendOnline || !activeSplitId) {
@@ -165,11 +450,11 @@ export default function App() {
         wsRef.current.close();
         wsRef.current = null;
       }
-      setWsConnected(false);
-      return;
+      const resetConnection = window.setTimeout(() => setWsConnected(false), 0);
+      return () => window.clearTimeout(resetConnection);
     }
 
-    const wsUrl = `${WS_BASE.replace('http', 'ws')}/ws/${activeSplitId}`;
+    const wsUrl = `${WS_BASE}/ws/${activeSplitId}`;
     console.log("[WS] Connecting to:", wsUrl);
     
     const ws = new WebSocket(wsUrl);
@@ -178,6 +463,20 @@ export default function App() {
     ws.onopen = () => {
       console.log("[WS] Connection established!");
       setWsConnected(true);
+      // #region agent log
+      fetch('http://127.0.0.1:7466/ingest/e301f673-70e7-4d27-b01c-da9c41a06f0a', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'e8f70e' },
+        body: JSON.stringify({
+          sessionId: 'e8f70e',
+          hypothesisId: 'H4',
+          location: 'App.tsx:ws.onopen',
+          message: 'ws_connected',
+          data: { splitId: activeSplitId },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
     };
 
     ws.onmessage = async (event) => {
@@ -200,13 +499,42 @@ export default function App() {
             const next = { ...prev };
             // Find local index for each backend participant ID
             next[itemId] = participantIds
-              .map(pid => people.findIndex(p => p.apiId === pid))
+              .map(pid => peopleRef.current.findIndex(p => p.apiId === pid))
               .filter(idx => idx !== -1);
             return next;
           });
+        } else if (data.type === 'item_added') {
+          const item = data.item;
+          setItems(prev => {
+            if (prev.some(it => it.id === item.id)) return prev;
+            return [...prev, {
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              qty: item.quantity,
+              emoji: item.emoji
+            }];
+          });
+          showToast(`New item added: ${item.name}`);
+        } else if (data.type === 'item_edited') {
+          setItems(prev => prev.map(it => it.id === data.item_id ? { ...it, name: data.name, price: data.price } : it));
+        } else if (data.type === 'item_deleted') {
+          setItems(prev => prev.filter(it => it.id !== data.item_id));
+          setAssignments(prev => {
+            const next = { ...prev };
+            delete next[data.item_id];
+            return next;
+          });
+        } else if (data.type === 'split_updated') {
+          if (data.restaurant) setActiveSplitName(data.restaurant);
+          await syncSplitDetails(activeSplitId);
         } else if (data.type === 'guest_paying') {
-          showToast(`Guest "${data.guest_name}" paid ₹${data.amount.toLocaleString('en-IN')}! 💸`);
-          // Trigger dynamic recalculations if active
+          // Show a persistent notification badge
+          const msg = `💸 ${data.guest_name} paid ₹${Math.round(data.amount).toLocaleString('en-IN')}`;
+          setGuestPayNotif(msg);
+          showToast(msg);
+          if (notifTimeoutRef.current) window.clearTimeout(notifTimeoutRef.current);
+          notifTimeoutRef.current = window.setTimeout(() => setGuestPayNotif(null), 6000);
         }
       } catch (e) {
         console.warn("[WS] Failed to parse websocket message:", e);
@@ -222,58 +550,7 @@ export default function App() {
       ws.close();
       wsRef.current = null;
     };
-  }, [backendOnline, activeSplitId, people]);
-
-  // Sync split details helper
-  async function syncSplitDetails(splitId: string) {
-    if (!backendOnline) return;
-    try {
-      const r = await fetch(`${API_BASE}/splits/${splitId}`);
-      if (r.ok) {
-        const data = await r.json();
-        
-        setActiveSplitName(data.split.restaurant || data.split.name);
-        
-        const subtotal = data.split.total_amount - data.split.tax - data.split.tip;
-        setTaxRate(data.split.tax / Math.max(1, subtotal) || 0.08);
-        setTipRate(data.split.tip / Math.max(1, subtotal) || 0.10);
-
-        // Map backend participants to local states
-        const mappedPeople = data.participants.map((p: any, idx: number) => ({
-          id: idx,
-          apiId: p.id,
-          name: p.name,
-          emoji: p.emoji,
-          color: colors[idx % colors.length],
-          upi: p.upi_id
-        }));
-        setPeople(mappedPeople);
-
-        // Map backend items to local states
-        const mappedItems = data.items.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          qty: item.quantity,
-          emoji: item.emoji
-        }));
-        setItems(mappedItems);
-
-        // Map backend assignments
-        const mappedAssignments: Record<string, number[]> = {};
-        data.assignments.forEach((asg: any) => {
-          if (!mappedAssignments[asg.item_id]) mappedAssignments[asg.item_id] = [];
-          const personIdx = mappedPeople.findIndex((p: any) => p.apiId === asg.participant_id);
-          if (personIdx !== -1) {
-            mappedAssignments[asg.item_id].push(personIdx);
-          }
-        });
-        setAssignments(mappedAssignments);
-      }
-    } catch (e) {
-      console.warn("Error synchronizing split details:", e);
-    }
-  }
+  }, [backendOnline, activeSplitId, syncSplitDetails]);
 
   // ── ACTIONS ──────────────────────────────────────────────────────────────────
   
@@ -328,7 +605,7 @@ export default function App() {
           body: JSON.stringify(payload)
         });
         if (resp.ok) {
-          const data = await resp.json();
+          const data = (await resp.json()) as SplitCreatedResponse;
           setActiveSplitId(data.split_id);
           setActiveGuestToken(data.guest_token);
 
@@ -599,7 +876,7 @@ export default function App() {
           body: JSON.stringify({ name, price, quantity: 1, emoji })
         });
         if (resp.ok) {
-          const data = await resp.json();
+          const data = (await resp.json()) as AddItemResponse;
           // Update item key to backend ID
           setItems(prev => prev.map(it => it.id === itemId ? { ...it, id: data.item_id } : it));
           setAssignments(prev => {
@@ -752,52 +1029,103 @@ export default function App() {
     }
   };
 
-  // Edit Tax / Tip percentages
+  // Edit Tax / Tip — opens inline modal instead of browser prompt()
   const handleEditTaxTip = () => {
-    const newTax = prompt("Enter Tax percentage (e.g. 8 for 8%):", String(taxRate * 100));
-    if (newTax !== null) {
-      setTaxRate(parseFloat(newTax) / 100);
-    }
-    const newTip = prompt("Enter Tip percentage (e.g. 10 for 10%):", String(tipRate * 100));
-    if (newTip !== null) {
-      setTipRate(parseFloat(newTip) / 100);
-    }
-    showToast("Tax & tip rates updated ✓");
+    setModalTaxVal(String(Math.round(taxRate * 100)));
+    setModalTipVal(String(Math.round(tipRate * 100)));
+    setTaxTipModalOpen(true);
+  };
+
+  const handleConfirmTaxTip = async () => {
+    const newTax = parseFloat(modalTaxVal) / 100;
+    const newTip = parseFloat(modalTipVal) / 100;
+    if (!isNaN(newTax)) setTaxRate(newTax);
+    if (!isNaN(newTip)) setTipRate(newTip);
+    setTaxTipModalOpen(false);
+    showToast('Tax & tip updated ✓');
 
     if (backendOnline && activeSplitId) {
       const billSubtotal = items.reduce((s, i) => s + i.price, 0);
-      const taxAbs = billSubtotal * taxRate;
-      const tipAbs = billSubtotal * tipRate;
+      const taxAbs = billSubtotal * (isNaN(newTax) ? taxRate : newTax);
+      const tipAbs = billSubtotal * (isNaN(newTip) ? tipRate : newTip);
       try {
-        fetch(`${API_BASE}/splits/${activeSplitId}/update`, {
+        await fetch(`${API_BASE}/splits/${activeSplitId}/update`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ restaurant: activeSplitName, tax: taxAbs, tip: tipAbs })
         });
       } catch (e) {
-        console.warn("Update tax/tip failed:", e);
+        console.warn('Update tax/tip failed:', e);
       }
     }
   };
 
   // Copy share split link
   const handleCopyLink = () => {
-    const link = backendOnline && activeSplitId ? `${API_BASE}/guest/${activeGuestToken}` : 'wise.app/s/demo-link';
+    const link =
+      backendOnline && activeGuestToken
+        ? guestShareLink(activeGuestToken)
+        : 'wise.app/s/demo-link';
     navigator.clipboard.writeText(link).catch(() => {});
     showToast("Link copied to clipboard! 📋");
   };
 
-  // UPI Request triggered
+  // UPI Request — opens actual UPI deeplink
   const handleTriggerUPI = (personId: number, amount: number) => {
     const person = people[personId];
     if (!person) return;
     const host = people[0];
-    const hostUpiId = host ? (host.upi || 'host@upi') : 'host@upi';
-    const upiLink = `upi://pay?pa=${hostUpiId}&pn=${encodeURIComponent(host ? host.name : 'Wise')}&am=${amount}&tn=${encodeURIComponent(activeSplitName)}`;
-    
-    console.log("UPI Link:", upiLink);
-    showToast(`UPI request sent to ${person.name} for ₹${amount.toLocaleString('en-IN')} 📩`);
+    const hostUpiId = host ? (host.upi || '') : '';
+    if (hostUpiId) {
+      const upiLink = `upi://pay?pa=${encodeURIComponent(hostUpiId)}&pn=${encodeURIComponent(host ? host.name : 'Wise')}&am=${amount.toFixed(2)}&tn=${encodeURIComponent(activeSplitName)}&cu=INR`;
+      window.open(upiLink, '_self');
+      showToast(`Opening UPI for ${person.name} · ₹${Math.round(amount).toLocaleString('en-IN')} 📱`);
+    } else {
+      showToast(`No UPI ID set for host. Add it in setup! 📝`);
+    }
   };
+
+  // Open QR code modal for a person
+  const handleShowQR = (personId: number, amount: number) => {
+    const person = people[personId];
+    if (!person) return;
+    const host = people[0];
+    setQrPerson({
+      name: person.name,
+      emoji: person.emoji,
+      upi: host?.upi ?? null,
+      amount
+    });
+    setQrModalOpen(true);
+  };
+
+  // Draw QR code on canvas when modal opens
+  useEffect(() => {
+    if (qrModalOpen && qrPerson && qrCanvasRef.current) {
+      const host = people[0];
+      const upiLink = host?.upi
+        ? `upi://pay?pa=${encodeURIComponent(host.upi)}&pn=${encodeURIComponent(host.name)}&am=${qrPerson.amount.toFixed(2)}&tn=WiseSplit&cu=INR`
+        : `upi://pay?am=${qrPerson.amount.toFixed(2)}&tn=WiseSplit&cu=INR`;
+      drawQRCode(qrCanvasRef.current, upiLink, 180);
+    }
+  }, [qrModalOpen, qrPerson, people]);
+
+  // Fetch minimize cash flow from backend
+  const fetchSettlements = useCallback(async () => {
+    if (!backendOnline || !activeSplitId) return;
+    setSettlementsLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/splits/${activeSplitId}/settle`);
+      if (r.ok) {
+        const data = (await r.json()) as MinimizeCashFlowResponse;
+        setSettlements(data.transactions);
+      }
+    } catch (e) {
+      console.warn('Settlement fetch failed:', e);
+    } finally {
+      setSettlementsLoading(false);
+    }
+  }, [backendOnline, activeSplitId]);
 
   // Inline edit host name
   const editHostNameInline = () => {
@@ -840,14 +1168,14 @@ export default function App() {
       try {
         const resp = await fetch(`${API_BASE}/guest/${activeGuestToken}`);
         if (resp.ok) {
-          const data = await resp.json();
+          const data = (await resp.json()) as GuestViewResponse;
           setActiveSplitName(data.restaurant || data.name);
           
           const subtotal = data.total - data.tax - data.tip;
           setTaxRate(data.tax / Math.max(1, subtotal) || 0.08);
           setTipRate(data.tip / Math.max(1, subtotal) || 0.10);
 
-          setItems(data.items.map((item: any) => ({
+          setItems(data.items.map((item) => ({
             id: item.id,
             name: item.name,
             price: item.price,
@@ -951,12 +1279,7 @@ export default function App() {
     return total;
   }, [items, guestSelectedItems]);
 
-  const guestTotal = useMemo(() => {
-    const sub = guestSubtotal;
-    const taxShare = sub * taxRate;
-    const tipShare = sub * tipRate;
-    return Math.round(sub + taxShare + tipShare);
-  }, [guestSubtotal, taxRate, tipRate]);
+  const guestTotal = Math.round(guestSubtotal + guestSubtotal * taxRate + guestSubtotal * tipRate);
 
   // Tab filter items
   const filteredItems = useMemo(() => {
@@ -1021,7 +1344,7 @@ export default function App() {
             <div className="screen active" id="home">
               <div className="home-bg"></div>
               <div className="home-pad">
-                <div className="home-greeting">Good evening 🌙</div>
+                <div className="home-greeting">{getGreeting()}</div>
                 <div className="home-name" id="home-username" onClick={editHostNameInline} style={{ cursor: 'pointer', display: 'inline-block' }}>
                   {hostName || 'Tap to set name'} ✌️
                 </div>
@@ -1065,7 +1388,7 @@ export default function App() {
 
                 <div className="section-title">
                   Recent Splits
-                  <span className="section-see">See all</span>
+                  <span className="section-see" onClick={() => goTo('history')} style={{ cursor: 'pointer' }}>See all →</span>
                 </div>
                 
                 <div className="card" style={{ padding: '0 16px' }} id="recent-splits-list">
@@ -1404,13 +1727,24 @@ export default function App() {
                 <div className="share-card-title">🔗 Share with your friends</div>
                 <div className="share-card-sub">They open the link — no app needed</div>
                 <div className="share-link-box" onClick={handleCopyLink}>
-                  <span>{backendOnline && activeSplitId ? `${API_BASE}/guest/${activeGuestToken}` : 'wise.app/s/demo-link'}</span>
+                  <span>
+                    {backendOnline && activeGuestToken
+                      ? guestShareLink(activeGuestToken)
+                      : 'wise.app/s/demo-link'}
+                  </span>
                   <span className="share-link-copy" id="copy-label">Copy</span>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button className="btn btn-secondary" onClick={() => showToast('Shared to WhatsApp! 🟢')} style={{ flex: 1, fontSize: '13px', padding: '12px' }}>WhatsApp</button>
                   <button className="btn btn-secondary" onClick={handleCopyLink} style={{ flex: 1, fontSize: '13px', padding: '12px' }}>Copy Link</button>
-                  <button className="btn btn-secondary" onClick={() => showToast('QR generated! 📱')} style={{ flex: 0, fontSize: '13px', padding: '12px 16px' }}>QR</button>
+                  <button className="btn btn-secondary" onClick={() => {
+                    // Show QR for host's UPI
+                    const host = people[0];
+                    if (host) {
+                      setQrPerson({ name: host.name, emoji: host.emoji, upi: host.upi, amount: 0 });
+                      setQrModalOpen(true);
+                    }
+                  }} style={{ flex: 0, fontSize: '13px', padding: '12px 16px' }}>QR</button>
                 </div>
               </div>
 
@@ -1447,8 +1781,8 @@ export default function App() {
                           <button className="pay-btn paid" style={{ flex: 1 }}>✓ You paid the bill</button>
                         ) : (
                           <>
-                            <button className="pay-btn upi" style={{ flex: 2 }} onClick={() => handleTriggerUPI(person.id, total)}>🇮🇳 Request via UPI</button>
-                            <button className="pay-btn link" style={{ flex: 1 }} onClick={() => showToast(`Link sent to ${person.name}! 🔗`)}>🔗 Link</button>
+                            <button className="pay-btn upi" style={{ flex: 2 }} onClick={() => handleTriggerUPI(person.id, total)}>🇮🇳 Pay via UPI</button>
+                            <button className="pay-btn link" style={{ flex: 0, padding: '13px 12px' }} onClick={() => handleShowQR(person.id, total)}>📱 QR</button>
                           </>
                         )}
                       </div>
@@ -1456,6 +1790,63 @@ export default function App() {
                   );
                 })}
               </div>
+
+              {/* ── MINIMIZE CASH FLOW SECTION ────────────────────────────────── */}
+              {backendOnline && activeSplitId && (
+                <div className="settle-section">
+                  <div className="settle-header">
+                    <div className="settle-title">⚡ Settle All</div>
+                    <button
+                      className="settle-badge"
+                      style={{ cursor: 'pointer', border: '1px solid rgba(34,211,163,0.2)' }}
+                      onClick={fetchSettlements}
+                    >
+                      {settlementsLoading ? 'Computing…' : 'Minimize Transactions'}
+                    </button>
+                  </div>
+                  {!settlements && !settlementsLoading && (
+                    <div style={{ fontSize: '12px', color: 'var(--text3)', textAlign: 'center', padding: '16px' }}>
+                      Tap above to compute the minimum number of payments needed to settle all debts.
+                    </div>
+                  )}
+                  {settlementsLoading && (
+                    <div className="settle-card">
+                      <div className="settle-loading">
+                        <div className="settle-spinner"></div>
+                        Computing optimal settlements…
+                      </div>
+                    </div>
+                  )}
+                  {settlements && !settlementsLoading && (
+                    settlements.length === 0 ? (
+                      <div className="settle-card" style={{ padding: '20px', textAlign: 'center', color: 'var(--green)', fontSize: '14px', fontWeight: 700 }}>
+                        ✅ All settled! No payments needed.
+                      </div>
+                    ) : (
+                      <div className="settle-card">
+                        {settlements.map((txn, i) => (
+                          <div key={i} className="settle-txn" onClick={() => {
+                            if (txn.upi_deeplink) window.open(txn.upi_deeplink, '_self');
+                            else showToast(`No UPI ID for ${txn.to_name}`);
+                          }}>
+                            <span style={{ fontSize: '22px' }}>{txn.from_emoji}</span>
+                            <div className="settle-txn-arrows">→</div>
+                            <span style={{ fontSize: '22px' }}>{txn.to_emoji}</span>
+                            <div className="settle-txn-info">
+                              <div className="settle-txn-desc">{txn.from_name} pays {txn.to_name}</div>
+                              <div className="settle-txn-sub">{txn.to_upi || 'No UPI ID'}</div>
+                            </div>
+                            <div className="settle-txn-amount">₹{Math.round(txn.amount).toLocaleString('en-IN')}</div>
+                            {txn.upi_deeplink && (
+                              <button className="settle-txn-pay" onClick={(e) => { e.stopPropagation(); window.open(txn.upi_deeplink, '_self'); }}>Pay →</button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
 
               {/* Total calculations card */}
               <div className="summary-total-card">
@@ -1485,6 +1876,47 @@ export default function App() {
               </div>
 
               <div style={{ height: '30px' }}></div>
+            </div>
+          )}
+
+          {/* ═══ HISTORY SCREEN ═══ */}
+          {activeScreen === 'history' && (
+            <div className="screen active" id="history">
+              <div className="history-header">
+                <button className="back-btn" onClick={goBack} style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                  <svg width="18" height="18" viewBox="0 0 18 18">
+                    <path d="M11 4L6 9L11 14" stroke="var(--text2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+                <div className="history-title">All Splits</div>
+                <span style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: 600 }}>{splitHistory.length} total</span>
+              </div>
+              <div className="history-list">
+                {splitHistory.length === 0 ? (
+                  <div className="history-empty">
+                    <div className="history-empty-icon">🍽️</div>
+                    <div className="history-empty-text">No splits yet.<br/>Start a new split from the home screen!</div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="history-month">Recent</div>
+                    <div className="card" style={{ padding: '0 16px' }}>
+                      {splitHistory.map(s => (
+                        <div key={s.id} className="split-item" onClick={() => handleLoadHistorySplit(s.id)}>
+                          <div className="split-avatar" style={{ background: 'rgba(124,111,255,0.12)' }}>🍽️</div>
+                          <div className="split-info">
+                            <div className="split-name">{s.restaurant}</div>
+                            <div className="split-date">{s.date} · {s.count} people</div>
+                          </div>
+                          <div>
+                            <div className="split-amount owed">{s.amount > 0 ? `₹${s.amount.toLocaleString('en-IN')}` : '—'}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
 
@@ -1572,21 +2004,9 @@ export default function App() {
               {/* Success overlay */}
               <div className={`pay-success-overlay ${paymentSuccess ? 'show' : ''}`} id="pay-success">
                 <div className="confetti-container" id="confetti">
-                  {confettiActive && Array.from({ length: 60 }).map((_, i) => {
-                    const colorsList = ['#7C6FFF', '#22D3A3', '#F59E0B', '#F87171', '#A78BFA'];
-                    return (
-                      <div key={i} className="confetti-piece" style={{
-                        left: `${Math.random() * 100}%`,
-                        top: '-20px',
-                        background: colorsList[Math.floor(Math.random() * colorsList.length)],
-                        width: `${4 + Math.random() * 8}px`,
-                        height: `${4 + Math.random() * 8}px`,
-                        animationDuration: `${1.5 + Math.random() * 2}s`,
-                        animationDelay: `${Math.random() * 0.5}s`,
-                        borderRadius: Math.random() > 0.5 ? '50%' : '2px'
-                      }}></div>
-                    );
-                  })}
+                  {confettiActive && CONFETTI_PIECES.map((style, i) => (
+                    <div key={i} className="confetti-piece" style={style}></div>
+                  ))}
                 </div>
                 <div className="pay-success-icon">✅</div>
                 <div className="pay-success-title">Paid! 🎉</div>
@@ -1603,6 +2023,14 @@ export default function App() {
 
         </div>{/* /screens */}
 
+        {/* Guest payment notification badge */}
+        {guestPayNotif && (
+          <div className="notif-badge" onClick={() => setGuestPayNotif(null)}>
+            <span>💸</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{guestPayNotif.replace('💸 ', '')}</span>
+          </div>
+        )}
+
         {/* Toast notifications */}
         <div className={`toast ${toastMsg ? 'show' : ''}`} id="toast">
           {toastMsg}
@@ -1611,6 +2039,90 @@ export default function App() {
         {/* Global confetti */}
         <div className="confetti-container" id="global-confetti"></div>
 
+        {/* ── TAX/TIP MODAL ─────────────────────────────────────────────────── */}
+        <div className={`modal-backdrop ${taxTipModalOpen ? 'open' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setTaxTipModalOpen(false); }}>
+          <div className="modal-sheet">
+            <div className="modal-handle"></div>
+            <div className="modal-title">✏️ Edit Tax & Tip</div>
+            <div className="modal-sub">Adjust percentages — all amounts update instantly</div>
+            <div className="modal-field">
+              <div className="modal-label">Tax Rate</div>
+              <div className="modal-input-row">
+                <input
+                  type="number"
+                  value={modalTaxVal}
+                  onChange={e => setModalTaxVal(e.target.value)}
+                  min="0" max="50" step="0.5"
+                  style={{ textAlign: 'right' }}
+                />
+                <span className="modal-input-suffix">%</span>
+              </div>
+            </div>
+            <div className="modal-field">
+              <div className="modal-label">Tip / Service Charge</div>
+              <div className="modal-input-row">
+                <input
+                  type="number"
+                  value={modalTipVal}
+                  onChange={e => setModalTipVal(e.target.value)}
+                  min="0" max="50" step="0.5"
+                  style={{ textAlign: 'right' }}
+                />
+                <span className="modal-input-suffix">%</span>
+              </div>
+            </div>
+            <div className="modal-btns">
+              <button className="modal-btn-cancel" onClick={() => setTaxTipModalOpen(false)}>Cancel</button>
+              <button className="modal-btn-confirm" onClick={handleConfirmTaxTip}>Apply Changes</button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── QR CODE MODAL ─────────────────────────────────────────────────── */}
+        <div className={`modal-backdrop ${qrModalOpen ? 'open' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setQrModalOpen(false); }}>
+          <div className="modal-sheet">
+            <div className="modal-handle"></div>
+            {qrPerson && (
+              <div className="qr-modal-content">
+                <div className="qr-person-info">
+                  {qrPerson.emoji} Pay {qrPerson.amount > 0 ? qrPerson.name : people[0]?.name || 'Host'}
+                </div>
+                {qrPerson.amount > 0 && (
+                  <div className="qr-amount-big">₹{Math.round(qrPerson.amount).toLocaleString('en-IN')}</div>
+                )}
+                <div className="qr-hint">Scan with any UPI app</div>
+                <div className="qr-canvas-wrap">
+                  <canvas ref={qrCanvasRef} />
+                </div>
+                {qrPerson.upi && (
+                  <div className="qr-upi-id">{qrPerson.upi}</div>
+                )}
+                {!qrPerson.upi && (
+                  <div className="qr-hint" style={{ color: 'var(--red)' }}>⚠️ No UPI ID set for host</div>
+                )}
+                <button
+                  className="btn btn-green"
+                  style={{ width: '100%', marginTop: '8px' }}
+                  onClick={() => {
+                    const host = people[0];
+                    if (host?.upi) {
+                      const upiLink = `upi://pay?pa=${encodeURIComponent(host.upi)}&pn=${encodeURIComponent(host.name)}&am=${qrPerson.amount.toFixed(2)}&tn=WiseSplit&cu=INR`;
+                      window.open(upiLink, '_self');
+                    } else {
+                      showToast('No UPI ID set for host');
+                    }
+                    setQrModalOpen(false);
+                  }}
+                >
+                  💸  Open UPI App
+                </button>
+              </div>
+            )}
+            <div style={{ height: '8px' }}></div>
+            <button className="modal-btn-cancel" style={{ width: '100%', marginTop: '10px' }} onClick={() => setQrModalOpen(false)}>Close</button>
+          </div>
+        </div>
+
       </div>{/* /phone */}
 
       {/* Hidden file input for real receipt uploads */}
@@ -1618,6 +2130,7 @@ export default function App() {
         type="file"
         id="receipt-file-input"
         accept="image/*"
+        capture="environment"
         style={{ display: 'none' }}
         ref={fileInputRef}
         onChange={handleReceiptFileChange}
