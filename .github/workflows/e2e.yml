@@ -46,7 +46,7 @@ jobs:
       - name: Install frontend deps & Playwright browsers
         run: |
           cd frontend
-          npm ci
+          npm ci || npm install --no-audit --no-fund
           npx playwright install chromium
 
       - name: Start backend
