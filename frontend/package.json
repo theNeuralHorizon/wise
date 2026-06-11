@@ -1,15 +1,23 @@
 {
-  "name": "frontend",
+  "name": "wise-mobile-web",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test:e2e": "playwright test --project=chromium",
     "build": "tsc -b && vite build",
+    "build:android": "tsc -b && vite build --mode android",
+    "android:sync": "npm run build:android && cap sync android",
+    "android:open": "cap open android",
+    "android:run": "npm run build:android && cap run android",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },
@@ -25,6 +33,8 @@
     "globals": "^17.6.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
+    "@playwright/test": "^1.40.0",
+    "playwright": "^1.40.0",
     "vite": "^8.0.12"
   }
 }
