@@ -23,6 +23,15 @@ pub enum AppError {
     #[error("Bad request: {0}")]
     BadRequest(String),
 
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+
+    #[error("Conflict: {0}")]
+    Conflict(String),
+
+    #[error("Validation error: {0}")]
+    Validation(serde_json::Value),
+
     #[error("AI service error: {0}")]
     Ai(String),
 
@@ -50,13 +59,24 @@ impl IntoResponse for AppError {
             }
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, "NOT_FOUND", msg.clone()),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "BAD_REQUEST", msg.clone()),
+            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", msg.clone()),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, "CONFLICT", msg.clone()),
+            AppError::Validation(errors) => {
+                return (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    Json(json!({
+                        "error": { "code": "VALIDATION_ERROR", "details": errors }
+                    })),
+                )
+                    .into_response();
+            }
             AppError::Ai(msg) => (StatusCode::BAD_GATEWAY, "AI_ERROR", msg.clone()),
             AppError::Internal(e) => {
                 tracing::error!(error = %e, "internal error");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "INTERNAL_ERROR",
-                    e.to_string(),
+                    "Internal server error".to_string(),
                 )
             }
         };

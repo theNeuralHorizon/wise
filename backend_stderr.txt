@@ -1,0 +1,4 @@
+Error: error returned from database: (code: 1) duplicate column name: token_created_at
+
+Caused by:
+    (code: 1) duplicate column name: token_created_at

@@ -22,15 +22,15 @@ pub struct ParticipantInput {
 
 #[derive(Debug, Deserialize)]
 pub struct AssignItemRequest {
-    /// List of participant IDs sharing this item (split equally)
     pub participant_ids: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct GuestPayRequest {
     pub name: String,
-    pub amount: f64,
+    pub amount: i64,
     pub item_ids: Vec<String>,
+    pub participant_id: Option<String>,
 }
 
 // ── RESPONSE TYPES ────────────────────────────────────────────────────────────
@@ -38,6 +38,8 @@ pub struct GuestPayRequest {
 #[derive(Debug, Serialize)]
 pub struct SplitCreated {
     pub split_id: String,
+    pub owner_token: String,
+    pub token_created_at: String,
     pub guest_token: String,
     pub guest_link: String,
     pub ws_url: String,
@@ -50,9 +52,9 @@ pub struct SplitRow {
     pub restaurant: Option<String>,
     pub created_by: String,
     pub created_at: String,
-    pub total_amount: f64,
-    pub tax: f64,
-    pub tip: f64,
+    pub total_amount: i64,
+    pub tax: i64,
+    pub tip: i64,
     pub guest_token: String,
 }
 
@@ -71,7 +73,7 @@ pub struct ItemRow {
     pub id: String,
     pub split_id: String,
     pub name: String,
-    pub price: f64,
+    pub price: i64,
     pub quantity: i64,
     pub emoji: String,
 }
@@ -97,10 +99,10 @@ pub struct PersonSummary {
     pub participant_name: String,
     pub participant_emoji: String,
     pub upi_id: Option<String>,
-    pub subtotal: f64,
-    pub tax_share: f64,
-    pub tip_share: f64,
-    pub total: f64,
+    pub subtotal: i64,
+    pub tax_share: i64,
+    pub tip_share: i64,
+    pub total: i64,
     pub item_names: Vec<String>,
 }
 
@@ -108,9 +110,9 @@ pub struct PersonSummary {
 pub struct SplitSummaryResponse {
     pub split_name: String,
     pub restaurant: Option<String>,
-    pub bill_total: f64,
-    pub tax: f64,
-    pub tip: f64,
+    pub bill_total: i64,
+    pub tax: i64,
+    pub tip: i64,
     pub guest_link: String,
     pub summaries: Vec<PersonSummary>,
 }

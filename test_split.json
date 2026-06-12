@@ -1,6 +1,1 @@
-{
-    "name": "Test Split",
-    "participants": [
-        {"name": "Host", "emoji": "😎"}
-    ]
-}
+{"name":"Payment Test","restaurant":"Test Resto","participants":[{"name":"Host","emoji":"😎","upi_id":"host@upi"}]}

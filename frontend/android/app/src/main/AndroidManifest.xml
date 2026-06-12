@@ -33,6 +33,23 @@
                 <data android:scheme="upi" />
             </intent-filter>
 
+            <!-- App deep links: app.wise.split://guest/TOKEN -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="app.wise.split" />
+            </intent-filter>
+
+            <!-- Universal links: http(s)://host/guest/TOKEN -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" android:host="*" android:pathPrefix="/guest/" />
+                <data android:scheme="https" android:host="*" android:pathPrefix="/guest/" />
+            </intent-filter>
+
         </activity>
 
         <provider

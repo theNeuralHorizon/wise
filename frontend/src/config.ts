@@ -3,9 +3,25 @@ import { Capacitor } from '@capacitor/core';
 const WEB_API_BASE = 'http://localhost:8081/api';
 const ANDROID_EMULATOR_API_BASE = 'http://10.0.2.2:8081/api';
 
-const DEFAULT_API_BASE = Capacitor.isNativePlatform()
-  ? ANDROID_EMULATOR_API_BASE
-  : WEB_API_BASE;
+function detectLanIp(): string {
+  if (typeof window === 'undefined') return 'localhost';
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '10.0.2.2') return hostname;
+  return hostname;
+}
+
+function getDeviceApiBase(): string {
+  if (Capacitor.isNativePlatform()) {
+    const lanIp = detectLanIp();
+    if (lanIp !== 'localhost' && lanIp !== '127.0.0.1' && lanIp !== '10.0.2.2') {
+      return `http://${lanIp}:8081/api`;
+    }
+    return ANDROID_EMULATOR_API_BASE;
+  }
+  return WEB_API_BASE;
+}
+
+const DEFAULT_API_BASE = getDeviceApiBase();
 
 function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, '');
@@ -23,7 +39,6 @@ export const WS_BASE = trimTrailingSlash(
   import.meta.env.VITE_WS_BASE_URL || apiToWsBase(API_BASE),
 );
 
-/** Base URL for guest share links (?guest=token). Defaults to current page origin. */
 export const FRONTEND_BASE = trimTrailingSlash(
   import.meta.env.VITE_FRONTEND_URL ||
     (typeof window !== 'undefined'
@@ -32,5 +47,5 @@ export const FRONTEND_BASE = trimTrailingSlash(
 );
 
 export function guestShareLink(token: string) {
-  return `${FRONTEND_BASE}?guest=${encodeURIComponent(token)}`;
+  return `${FRONTEND_BASE}/guest/${encodeURIComponent(token)}`;
 }

@@ -54,6 +54,12 @@ futures-util = "0.3"
 # Random token generation
 rand = "0.8"
 
+# Hex encoding for owner tokens
+hex = "0.4"
+
+# Unicode grapheme cluster splitting for emoji validation
+unicode-segmentation = "1.10"
+
 [profile.release]
 opt-level = 3
 lto = "thin"

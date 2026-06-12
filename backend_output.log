@@ -1,0 +1,61 @@
+[2m2026-06-12T07:09:08.266212Z[0m [32m INFO[0m ✅ Schema migration v2 applied
+[2m2026-06-12T07:09:08.266878Z[0m [32m INFO[0m ✅ Database schema ready (WAL mode, version=2)
+[2m2026-06-12T07:09:08.267505Z[0m [33m WARN[0m GEMINI_API_KEY not set — using mock receipt data in demo mode
+[2m2026-06-12T07:09:08.268410Z[0m [32m INFO[0m Wise API listening on 0.0.0.0:8081
+[2m2026-06-12T07:11:42.119989Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0m03a05820-a7ff-4b08-aecc-0546aca99fd1 [3mhost[0m[2m=[0mHost
+[2m2026-06-12T07:11:42.130598Z[0m [34mDEBUG[0m Attempting to call Python AI microservice at http://localhost:5000/parse
+[2m2026-06-12T07:11:42.452048Z[0m [33m WARN[0m AI microservice failed/down, falling back to local Rust handler: Microservice returned status 401 Unauthorized: {"error": "GEMINI_API_KEY not set"}
+[2m2026-06-12T07:11:42.452391Z[0m [34mDEBUG[0m Using mock receipt (no API key)
+[2m2026-06-12T07:11:42.460066Z[0m [32m INFO[0m Receipt parsed [3msplit_id[0m[2m=[0m03a05820-a7ff-4b08-aecc-0546aca99fd1 [3mitems[0m[2m=[0m9 [3mis_mock[0m[2m=[0mtrue
+[2m2026-06-12T07:11:42.837970Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0m139d04c7-9e93-459b-a236-7d0bee4d81c3 [3mhost[0m[2m=[0mHost
+[2m2026-06-12T07:11:42.845170Z[0m [34mDEBUG[0m Attempting to call Python AI microservice at http://localhost:5000/parse
+[2m2026-06-12T07:11:43.153755Z[0m [33m WARN[0m AI microservice failed/down, falling back to local Rust handler: Microservice returned status 401 Unauthorized: {"error": "GEMINI_API_KEY not set"}
+[2m2026-06-12T07:11:43.153986Z[0m [34mDEBUG[0m Using mock receipt (no API key)
+[2m2026-06-12T07:11:43.159976Z[0m [32m INFO[0m Receipt parsed [3msplit_id[0m[2m=[0m139d04c7-9e93-459b-a236-7d0bee4d81c3 [3mitems[0m[2m=[0m9 [3mis_mock[0m[2m=[0mtrue
+[2m2026-06-12T07:12:32.177173Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0md35a76a3-447b-42d2-ab11-8ee182110196 [3mhost[0m[2m=[0mA
+[2m2026-06-12T07:13:00.437586Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0m6162ed52-18bc-47c4-9466-2e1f37529dc5 [3mhost[0m[2m=[0mHost
+[2m2026-06-12T07:13:00.445886Z[0m [34mDEBUG[0m Attempting to call Python AI microservice at http://localhost:5000/parse
+[2m2026-06-12T07:13:00.647230Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0m8f7474cb-d8f9-4312-8215-66fe2f664e23 [3mhost[0m[2m=[0mHost
+[2m2026-06-12T07:13:00.654248Z[0m [34mDEBUG[0m Attempting to call Python AI microservice at http://localhost:5000/parse
+[2m2026-06-12T07:13:00.754205Z[0m [33m WARN[0m AI microservice failed/down, falling back to local Rust handler: Microservice returned status 401 Unauthorized: {"error": "GEMINI_API_KEY not set"}
+[2m2026-06-12T07:13:00.754414Z[0m [34mDEBUG[0m Using mock receipt (no API key)
+[2m2026-06-12T07:13:00.758935Z[0m [32m INFO[0m Receipt parsed [3msplit_id[0m[2m=[0m6162ed52-18bc-47c4-9466-2e1f37529dc5 [3mitems[0m[2m=[0m9 [3mis_mock[0m[2m=[0mtrue
+[2m2026-06-12T07:13:00.959572Z[0m [33m WARN[0m AI microservice failed/down, falling back to local Rust handler: Microservice returned status 401 Unauthorized: {"error": "GEMINI_API_KEY not set"}
+[2m2026-06-12T07:13:00.960027Z[0m [34mDEBUG[0m Using mock receipt (no API key)
+[2m2026-06-12T07:13:00.964892Z[0m [32m INFO[0m Receipt parsed [3msplit_id[0m[2m=[0m8f7474cb-d8f9-4312-8215-66fe2f664e23 [3mitems[0m[2m=[0m9 [3mis_mock[0m[2m=[0mtrue
+[2m2026-06-12T07:19:49.779864Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0m620fbc39-02bd-4f3a-90f5-b36ac9a62597 [3mhost[0m[2m=[0mHost
+[2m2026-06-12T07:19:49.789897Z[0m [34mDEBUG[0m Attempting to call Python AI microservice at http://localhost:5000/parse
+[2m2026-06-12T07:19:50.009144Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0md1d4c1ef-2cfa-4997-9a27-a2d6ae87bd01 [3mhost[0m[2m=[0mHost
+[2m2026-06-12T07:19:50.017239Z[0m [34mDEBUG[0m Attempting to call Python AI microservice at http://localhost:5000/parse
+[2m2026-06-12T07:19:50.107936Z[0m [33m WARN[0m AI microservice failed/down, falling back to local Rust handler: Microservice returned status 401 Unauthorized: {"error": "GEMINI_API_KEY not set"}
+[2m2026-06-12T07:19:50.108274Z[0m [34mDEBUG[0m Using mock receipt (no API key)
+[2m2026-06-12T07:19:50.114930Z[0m [32m INFO[0m Receipt parsed [3msplit_id[0m[2m=[0m620fbc39-02bd-4f3a-90f5-b36ac9a62597 [3mitems[0m[2m=[0m9 [3mis_mock[0m[2m=[0mtrue
+[2m2026-06-12T07:19:50.324170Z[0m [33m WARN[0m AI microservice failed/down, falling back to local Rust handler: Microservice returned status 401 Unauthorized: {"error": "GEMINI_API_KEY not set"}
+[2m2026-06-12T07:19:50.324386Z[0m [34mDEBUG[0m Using mock receipt (no API key)
+[2m2026-06-12T07:19:50.330243Z[0m [32m INFO[0m Receipt parsed [3msplit_id[0m[2m=[0md1d4c1ef-2cfa-4997-9a27-a2d6ae87bd01 [3mitems[0m[2m=[0m9 [3mis_mock[0m[2m=[0mtrue
+[2m2026-06-12T07:20:35.721888Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0mf7a276d6-e0a8-4321-9c3d-2a1bb4540f77 [3mhost[0m[2m=[0mHost
+[2m2026-06-12T07:20:35.730352Z[0m [34mDEBUG[0m Attempting to call Python AI microservice at http://localhost:5000/parse
+[2m2026-06-12T07:20:35.933007Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0md857ca43-73b4-4506-a642-bafef9391139 [3mhost[0m[2m=[0mHost
+[2m2026-06-12T07:20:35.940277Z[0m [34mDEBUG[0m Attempting to call Python AI microservice at http://localhost:5000/parse
+[2m2026-06-12T07:20:36.038270Z[0m [33m WARN[0m AI microservice failed/down, falling back to local Rust handler: Microservice returned status 401 Unauthorized: {"error": "GEMINI_API_KEY not set"}
+[2m2026-06-12T07:20:36.038454Z[0m [34mDEBUG[0m Using mock receipt (no API key)
+[2m2026-06-12T07:20:36.042637Z[0m [32m INFO[0m Receipt parsed [3msplit_id[0m[2m=[0mf7a276d6-e0a8-4321-9c3d-2a1bb4540f77 [3mitems[0m[2m=[0m9 [3mis_mock[0m[2m=[0mtrue
+[2m2026-06-12T07:20:36.136359Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0m5b6904ff-0044-4287-aa35-15248311e467 [3mhost[0m[2m=[0mA
+[2m2026-06-12T07:20:36.258515Z[0m [33m WARN[0m AI microservice failed/down, falling back to local Rust handler: Microservice returned status 401 Unauthorized: {"error": "GEMINI_API_KEY not set"}
+[2m2026-06-12T07:20:36.258707Z[0m [34mDEBUG[0m Using mock receipt (no API key)
+[2m2026-06-12T07:20:36.264255Z[0m [32m INFO[0m Receipt parsed [3msplit_id[0m[2m=[0md857ca43-73b4-4506-a642-bafef9391139 [3mitems[0m[2m=[0m9 [3mis_mock[0m[2m=[0mtrue
+[2m2026-06-12T07:20:36.354190Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0m221ac3d4-46d2-4c73-93fd-0affb25ae743 [3mhost[0m[2m=[0mHost
+[2m2026-06-12T07:20:37.325135Z[0m [34mDEBUG[0m WebSocket connected [3msplit_id[0m[2m=[0m221ac3d4-46d2-4c73-93fd-0affb25ae743
+[2m2026-06-12T07:20:39.575714Z[0m [34mDEBUG[0m WebSocket disconnected [3msplit_id[0m[2m=[0m221ac3d4-46d2-4c73-93fd-0affb25ae743
+[2m2026-06-12T07:20:39.627752Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0m98fe8f9a-f3e9-4878-810a-de12d18a6381 [3mhost[0m[2m=[0mHost
+[2m2026-06-12T07:20:39.630136Z[0m [34mDEBUG[0m Attempting to call Python AI microservice at http://localhost:5000/parse
+[2m2026-06-12T07:20:39.948264Z[0m [33m WARN[0m AI microservice failed/down, falling back to local Rust handler: Microservice returned status 401 Unauthorized: {"error": "GEMINI_API_KEY not set"}
+[2m2026-06-12T07:20:39.948496Z[0m [34mDEBUG[0m Using mock receipt (no API key)
+[2m2026-06-12T07:20:39.952913Z[0m [32m INFO[0m Receipt parsed [3msplit_id[0m[2m=[0m98fe8f9a-f3e9-4878-810a-de12d18a6381 [3mitems[0m[2m=[0m9 [3mis_mock[0m[2m=[0mtrue
+[2m2026-06-12T07:20:40.085553Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0m8c9da6fc-d660-4d16-bf77-033d1d3f7ce2 [3mhost[0m[2m=[0mHost
+[2m2026-06-12T07:20:40.885801Z[0m [34mDEBUG[0m WebSocket connected [3msplit_id[0m[2m=[0m8c9da6fc-d660-4d16-bf77-033d1d3f7ce2
+[2m2026-06-12T07:20:41.190047Z[0m [34mDEBUG[0m WebSocket disconnected [3msplit_id[0m[2m=[0m8c9da6fc-d660-4d16-bf77-033d1d3f7ce2
+[2m2026-06-12T07:20:41.246720Z[0m [32m INFO[0m Split created [3msplit_id[0m[2m=[0md9667309-07c9-4cf9-a007-ac41e70533f1 [3mhost[0m[2m=[0mHost
+[2m2026-06-12T07:20:42.058660Z[0m [34mDEBUG[0m WebSocket connected [3msplit_id[0m[2m=[0md9667309-07c9-4cf9-a007-ac41e70533f1
+[2m2026-06-12T07:20:42.423074Z[0m [34mDEBUG[0m WebSocket disconnected [3msplit_id[0m[2m=[0md9667309-07c9-4cf9-a007-ac41e70533f1
+[2m2026-06-12T07:21:08.277521Z[0m [34mDEBUG[0m WS cleanup: removed 3 dead channels

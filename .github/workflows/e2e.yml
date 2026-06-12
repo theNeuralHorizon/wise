@@ -60,6 +60,18 @@ jobs:
           python -u ai_service/main.py > ai_service.log 2>&1 &
           echo $! > ai_service.pid
 
+      - name: Dump backend log (debug)
+        if: always()
+        run: |
+          if [ -f backend/backend.log ]; then
+            echo "--- backend log (tail 200) ---"
+            sleep 1
+            tail -n 200 backend/backend.log || true
+            echo "--- end backend log ---"
+          else
+            echo "backend/backend.log not found"
+          fi
+
       - name: Wait for services
         run: |
           echo "Waiting for backend..."

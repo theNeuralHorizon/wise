@@ -1,13 +1,31 @@
 // src/ai.rs
 // Gemini Vision API client.
 // Gracefully degrades to mock data when GEMINI_API_KEY is not set.
-// This prevents the entire dev workflow from being blocked on an API key.
 
 use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use serde::{Deserialize, Serialize};
 
-// ── PUBLIC TYPES ───────────────────────────────────────────────────────────────
+pub const RECEIPT_PROMPT: &str = r#"You are a precise receipt OCR parser. Extract all line items from this receipt image.
+
+Return ONLY valid JSON with this exact structure (no markdown, no explanation):
+{
+  "restaurant": string or null,
+  "items": [{"name": string, "price": number, "quantity": integer, "emoji": string}],
+  "subtotal": number,
+  "tax": number,
+  "tip": number,
+  "total": number,
+  "confidence": number
+}
+
+Rules:
+- price = unit price (not multiplied by quantity)
+- quantity = number of that item ordered
+- emoji = single relevant food emoji for the item
+- confidence = 0.0 to 1.0 (how confident you are in the parse)
+- All amounts in the currency shown (do not convert)
+- If tax/tip not shown, use 0"#;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ParsedItem {
@@ -29,12 +47,11 @@ pub struct ParsedReceipt {
     pub is_mock: bool,
 }
 
-// ── CLIENT ────────────────────────────────────────────────────────────────────
-
 #[derive(Clone)]
 pub struct GeminiClient {
     http: reqwest::Client,
     api_key: Option<String>,
+    model: String,
 }
 
 impl GeminiClient {
@@ -43,10 +60,13 @@ impl GeminiClient {
             .ok()
             .filter(|k| !k.is_empty());
 
+        let model = std::env::var("GEMINI_MODEL")
+            .unwrap_or_else(|_| "gemini-1.5-flash".to_string());
+
         if api_key.is_none() {
             tracing::warn!("GEMINI_API_KEY not set — using mock receipt data in demo mode");
         } else {
-            tracing::info!("Gemini Vision API ready");
+            tracing::info!("Gemini Vision API ready (model={})", model);
         }
 
         Self {
@@ -55,28 +75,25 @@ impl GeminiClient {
                 .build()
                 .expect("Failed to build HTTP client"),
             api_key,
+            model,
         }
     }
 
     pub async fn parse_receipt(&self, image_bytes: &[u8]) -> Result<ParsedReceipt> {
-        // 1. Attempt to call Python AI microservice
         tracing::debug!("Attempting to call Python AI microservice at http://localhost:5000/parse");
         match self.call_ai_microservice(image_bytes).await {
             Ok(parsed) => {
-                tracing::info!("✅ AI parse succeeded via Python microservice");
+                tracing::info!("AI parse succeeded via Python microservice");
                 return Ok(parsed);
             }
             Err(e) => {
-                tracing::warn!("⚠️ AI microservice failed/down, falling back to local Rust handler: {:?}", e);
+                tracing::warn!("AI microservice failed/down, falling back to local Rust handler: {:?}", e);
             }
         }
 
-        // 2. Fallback to local Rust handler
         match &self.api_key {
             None => {
                 tracing::debug!("Using mock receipt (no API key)");
-                // Simulate realistic parsing latency
-                tokio::time::sleep(std::time::Duration::from_millis(800)).await;
                 Ok(Self::mock_receipt())
             }
             Some(key) => self.call_gemini(image_bytes, key).await,
@@ -84,11 +101,12 @@ impl GeminiClient {
     }
 
     async fn call_ai_microservice(&self, image_bytes: &[u8]) -> Result<ParsedReceipt> {
-        let url = "http://localhost:5000/parse";
-        
+        let url = std::env::var("AI_SERVICE_URL")
+            .unwrap_or_else(|_| "http://localhost:5000/parse".to_string());
+
         let resp = self
             .http
-            .post(url)
+            .post(&url)
             .body(image_bytes.to_vec())
             .send()
             .await
@@ -111,28 +129,6 @@ impl GeminiClient {
     async fn call_gemini(&self, image_bytes: &[u8], api_key: &str) -> Result<ParsedReceipt> {
         let b64_image = B64.encode(image_bytes);
 
-        // Structured prompt — drives Gemini to return valid JSON
-        let prompt = r#"You are a precise receipt OCR parser. Extract all line items from this receipt image.
-
-Return ONLY valid JSON with this exact structure (no markdown, no explanation):
-{
-  "restaurant": string or null,
-  "items": [{"name": string, "price": number, "quantity": integer, "emoji": string}],
-  "subtotal": number,
-  "tax": number,
-  "tip": number,
-  "total": number,
-  "confidence": number
-}
-
-Rules:
-- price = unit price (not multiplied by quantity)
-- quantity = number of that item ordered
-- emoji = single relevant food emoji for the item
-- confidence = 0.0 to 1.0 (how confident you are in the parse)
-- All amounts in the currency shown (do not convert)
-- If tax/tip not shown, use 0"#;
-
         let payload = serde_json::json!({
             "contents": [{
                 "parts": [
@@ -142,7 +138,7 @@ Rules:
                             "data": b64_image
                         }
                     },
-                    { "text": prompt }
+                    { "text": RECEIPT_PROMPT }
                 ]
             }],
             "generationConfig": {
@@ -153,8 +149,8 @@ Rules:
         });
 
         let url = format!(
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={}",
-            api_key
+            "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
+            self.model, api_key
         );
 
         let resp = self
@@ -180,7 +176,6 @@ Rules:
             .as_str()
             .ok_or_else(|| anyhow!("Unexpected Gemini response shape: {:?}", gemini_resp))?;
 
-        // Parse the inner JSON returned by Gemini
         let mut parsed: ParsedReceipt = serde_json::from_str(raw_json)
             .map_err(|e| anyhow!("Gemini returned invalid JSON: {} — raw: {}", e, raw_json))?;
 

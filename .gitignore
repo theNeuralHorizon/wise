@@ -16,7 +16,11 @@
 **/*.pyo
 **/*.pyd
 
+# Debug logs
+debug-*.log
+
 # Operating System files
 .DS_Store
 Thumbs.db
 desktop.ini
+.aider*
