@@ -864,6 +864,35 @@ input:focus-visible {
   background: var(--color-accent);
 }
 
+/* ── WS STATUS BADGE ──────────────────────────────────────────────────────── */
+.ws-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
+}
+.ws-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  transition: background 0.3s;
+}
+.ws-badge-dot.connected { background: #22c55e; }
+.ws-badge-dot.connecting { background: #f59e0b; animation: pulse 1s infinite; }
+.ws-badge-dot.disconnected { background: #ef4444; }
+
+/* ── SCREEN READER ONLY ───────────────────────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 /* ── OFFLINE BANNER ─────────────────────────────────────────────────────────── */
 .offline-banner {
   display: flex;

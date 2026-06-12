@@ -5,7 +5,7 @@ interface ToastProps {
 }
 
 export const Toast: React.FC<ToastProps> = ({ message }) => (
-  <div className={`toast ${message ? 'show' : ''}`} id="toast">
+  <div className={`toast ${message ? 'show' : ''}`} id="toast" role="status" aria-live="polite">
     {message}
   </div>
 );

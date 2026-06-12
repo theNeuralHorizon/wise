@@ -617,7 +617,7 @@ pub async fn get_summary(
     let frontend_base_url = std::env::var("FRONTEND_BASE_URL")
         .ok()
         .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| base_url);
+        .unwrap_or(base_url);
 
     Ok(Json(SplitSummaryResponse {
         split_name,
@@ -793,6 +793,17 @@ pub async fn update_split(
 ) -> Result<impl IntoResponse> {
     let owner_token = extract_owner_token(&headers)?;
     verify_owner(&state, &split_id, &owner_token).await?;
+
+    if let Some(tax) = payload.tax {
+        if tax < 0 {
+            return Err(AppError::BadRequest("Tax cannot be negative".to_string()));
+        }
+    }
+    if let Some(tip) = payload.tip {
+        if tip < 0 {
+            return Err(AppError::BadRequest("Tip cannot be negative".to_string()));
+        }
+    }
 
     let split_name = payload.name.as_deref().unwrap_or(&payload.restaurant);
 

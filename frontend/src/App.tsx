@@ -57,6 +57,7 @@ function AppContent() {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [isUsingCache, setIsUsingCache] = useState(false);
   const [isDark, setIsDark] = useState(() => !localStorage.getItem('wise_theme') || localStorage.getItem('wise_theme') === 'dark');
+  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
   const wsRef = useRef<WebSocket | null>(null);
   const { isOffline, pendingCount, setPendingCount } = useOffline();
   useEffect(() => {
@@ -180,10 +181,11 @@ function AppContent() {
 
     function connect() {
       if (disposed) return;
+      setWsStatus('connecting');
       const ws = new WebSocket(`${WS_BASE}/ws/${activeSplitId}`);
       wsRef.current = ws;
 
-      ws.onopen = () => { reconnectDelay = 1000; };
+      ws.onopen = () => { reconnectDelay = 1000; setWsStatus('connected'); };
 
       ws.onmessage = async (event) => {
         try {
@@ -233,6 +235,7 @@ function AppContent() {
 
       ws.onclose = () => {
         if (disposed) return;
+        setWsStatus('disconnected');
         const delay = Math.min(reconnectDelay, 30000);
         console.log(`WS closed, reconnecting in ${delay}ms`);
         reconnectTimer = window.setTimeout(() => { reconnectDelay *= 2; connect(); }, delay);
@@ -434,6 +437,9 @@ function AppContent() {
         <div className="status">
           <span className="status-time">{new Date().getHours().toString().padStart(2, '0')}:{new Date().getMinutes().toString().padStart(2, '0')}</span>
           <div className="status-icons">
+            <div className={`ws-badge ${wsStatus}`} title={wsStatus === 'connected' ? 'WebSocket connected' : wsStatus === 'connecting' ? 'Reconnecting...' : 'WebSocket disconnected'}>
+              <span className={`ws-badge-dot ${wsStatus}`} />
+            </div>
             <svg width="25" height="12" viewBox="0 0 25 12" fill="white"><rect x="0" y="1" width="22" height="10" rx="3" stroke="white" strokeWidth="1" fill="none" opacity=".35" /><rect x="23" y="4" width="2" height="4" rx="1" opacity=".35" /><rect x="1" y="2" width="18" height="8" rx="2" fill="white" /></svg>
             <button 
               className="theme-toggle" 
@@ -449,7 +455,7 @@ function AppContent() {
           {backendOnline ? 'Live API' : 'Demo Mode'}
         </div>
         {(isOffline || isUsingCache) && (
-          <div className="offline-banner">
+          <div className="offline-banner" role="alert">
             <span className="offline-banner-icon">📡</span>
             Offline — showing cached data{pendingCount > 0 ? ` (${pendingCount} pending)` : ''}
           </div>

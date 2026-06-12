@@ -1,0 +1,28 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./data:/home/wise
+    environment:
+      - DATABASE_URL=sqlite:/home/wise/wise.db?mode=rwc
+      - HOST=0.0.0.0
+      - PORT=8081
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy

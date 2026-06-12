@@ -187,7 +187,8 @@ pub async fn get_payments(
     State(state): State<Arc<AppState>>,
     Path(split_id): Path<String>,
 ) -> Result<impl IntoResponse> {
-    let payments: Vec<(String, String, String, Option<String>, Option<String>, String, i64, String, String, Option<String>)> =
+    type PaymentRow = (String, String, String, Option<String>, Option<String>, String, i64, String, String, Option<String>);
+    let payments: Vec<PaymentRow> =
         sqlx::query_as(
             "SELECT p.id, p.split_id, p.from_participant, prt.name, prt.emoji,
                     p.to_participant, p.amount, p.status, p.created_at, p.confirmed_at
@@ -293,4 +294,39 @@ pub async fn confirm_payment(
         "payment_id": payment_id,
         "confirmed_at": now,
     })))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize_upi_id_valid() {
+        assert_eq!(sanitize_upi_id("user@okhdfcbank"), "user@okhdfcbank");
+        assert_eq!(sanitize_upi_id("123-abc@ybl"), "123-abc@ybl");
+        assert_eq!(sanitize_upi_id("test.name@paytm"), "test.name@paytm");
+    }
+
+    #[test]
+    fn test_sanitize_upi_id_strips_dangerous_chars() {
+        assert_eq!(sanitize_upi_id("user@ok<script>"), "user@okscript");
+        assert_eq!(sanitize_upi_id("user@ok\nhdfc"), "user@okhdfc");
+        assert_eq!(sanitize_upi_id("user name@bank"), "username@bank");
+        assert_eq!(sanitize_upi_id("user@bank;DROP TABLE"), "user@bankDROPTABLE");
+    }
+
+    #[test]
+    fn test_sanitize_upi_id_empty() {
+        assert_eq!(sanitize_upi_id(""), "");
+    }
+
+    #[test]
+    fn test_sanitize_upi_id_only_special() {
+        assert_eq!(sanitize_upi_id("<>&'\""), "");
+    }
+
+    #[test]
+    fn test_sanitize_upi_id_preserves_dots_hyphens() {
+        assert_eq!(sanitize_upi_id("first.last-name@bank"), "first.last-name@bank");
+    }
 }
