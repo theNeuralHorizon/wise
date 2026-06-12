@@ -174,55 +174,80 @@ function AppContent() {
       if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
       return;
     }
-    const ws = new WebSocket(`${WS_BASE}/ws/${activeSplitId}`);
-    wsRef.current = ws;
-    ws.onmessage = async (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'receipt_parsed') {
-          showToast('AI parsed receipt items! ✨');
-          if (data.restaurant) setActiveSplitName(data.restaurant);
-          await syncSplitDetails(activeSplitId);
-          navigate(`/split/${activeSplitId}/assign`);
-        } else if (data.type === 'item_assigned') {
-          setAssignments(prev => {
-            const next = { ...prev };
-            next[data.item_id] = (data.participant_ids as string[]).map(pid => peopleRef.current.findIndex(p => p.apiId === pid)).filter(i => i !== -1);
-            return next;
-          });
-        } else if (data.type === 'item_added') {
-          const item = data.item;
-          setItems(prev => prev.some(it => it.id === item.id) ? prev : [...prev, { id: item.id, name: item.name, price: item.price, qty: item.quantity, emoji: item.emoji }]);
-          showToast(`New item added: ${item.name}`);
-        } else if (data.type === 'item_edited') {
-          setItems(prev => prev.map(it => it.id === data.item_id ? { ...it, name: data.name, price: data.price } : it));
-        } else if (data.type === 'item_deleted') {
-          setItems(prev => prev.filter(it => it.id !== data.item_id));
-          setAssignments(prev => { const next = { ...prev }; delete next[data.item_id]; return next; });
-        } else if (data.type === 'split_updated') {
-          if (data.restaurant) setActiveSplitName(data.restaurant);
-          await syncSplitDetails(activeSplitId);
-        } else if (data.type === 'guest_paying') {
-          showToast(`💸 ${data.guest_name} paid ₹${(data.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`);
-          if (activeSplitId) {
-            try {
-              const pmts = await api.getPayments(activeSplitId);
-              setPayments(pmts);
-            } catch { /* ignore */ }
+    let reconnectDelay = 1000;
+    let reconnectTimer: number | null = null;
+    let disposed = false;
+
+    function connect() {
+      if (disposed) return;
+      const ws = new WebSocket(`${WS_BASE}/ws/${activeSplitId}`);
+      wsRef.current = ws;
+
+      ws.onopen = () => { reconnectDelay = 1000; };
+
+      ws.onmessage = async (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'receipt_parsed') {
+            showToast('AI parsed receipt items! ✨');
+            if (data.restaurant) setActiveSplitName(data.restaurant);
+            await syncSplitDetails(activeSplitId);
+            navigate(`/split/${activeSplitId}/assign`);
+          } else if (data.type === 'item_assigned') {
+            setAssignments(prev => {
+              const next = { ...prev };
+              next[data.item_id] = (data.participant_ids as string[]).map(pid => peopleRef.current.findIndex(p => p.apiId === pid)).filter(i => i !== -1);
+              return next;
+            });
+          } else if (data.type === 'item_added') {
+            const item = data.item;
+            setItems(prev => prev.some(it => it.id === item.id) ? prev : [...prev, { id: item.id, name: item.name, price: item.price, qty: item.quantity, emoji: item.emoji }]);
+            showToast(`New item added: ${item.name}`);
+          } else if (data.type === 'item_edited') {
+            setItems(prev => prev.map(it => it.id === data.item_id ? { ...it, name: data.name, price: data.price } : it));
+          } else if (data.type === 'item_deleted') {
+            setItems(prev => prev.filter(it => it.id !== data.item_id));
+            setAssignments(prev => { const next = { ...prev }; delete next[data.item_id]; return next; });
+          } else if (data.type === 'split_updated') {
+            if (data.restaurant) setActiveSplitName(data.restaurant);
+            await syncSplitDetails(activeSplitId);
+          } else if (data.type === 'guest_paying') {
+            showToast(`💸 ${data.guest_name} paid ₹${(data.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`);
+            if (activeSplitId) {
+              try {
+                const pmts = await api.getPayments(activeSplitId);
+                setPayments(pmts);
+              } catch { /* ignore */ }
+            }
+          } else if (data.type === 'payment_confirmed') {
+            showToast('✅ Payment confirmed!');
+            if (activeSplitId) {
+              try {
+                const pmts = await api.getPayments(activeSplitId);
+                setPayments(pmts);
+              } catch { /* ignore */ }
+            }
           }
-        } else if (data.type === 'payment_confirmed') {
-          showToast('✅ Payment confirmed!');
-          if (activeSplitId) {
-            try {
-              const pmts = await api.getPayments(activeSplitId);
-              setPayments(pmts);
-            } catch { /* ignore */ }
-          }
-        }
-      } catch { /* ignore */ }
+        } catch { /* ignore */ }
+      };
+
+      ws.onclose = () => {
+        if (disposed) return;
+        const delay = Math.min(reconnectDelay, 30000);
+        console.log(`WS closed, reconnecting in ${delay}ms`);
+        reconnectTimer = window.setTimeout(() => { reconnectDelay *= 2; connect(); }, delay);
+      };
+
+      ws.onerror = () => { ws.close(); };
+    }
+
+    connect();
+
+    return () => {
+      disposed = true;
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
     };
-    ws.onclose = () => {};
-    return () => { ws.close(); wsRef.current = null; };
   }, [backendOnline, activeSplitId, syncSplitDetails, navigate, showToast]);
   const runMockScanner = useCallback(() => {
     showToast('Demo Mode: Simulating receipt parsing...');

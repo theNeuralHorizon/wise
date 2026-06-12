@@ -55,7 +55,7 @@ pub struct GeminiClient {
 }
 
 impl GeminiClient {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self> {
         let api_key = std::env::var("GEMINI_API_KEY")
             .ok()
             .filter(|k| !k.is_empty());
@@ -69,14 +69,12 @@ impl GeminiClient {
             tracing::info!("Gemini Vision API ready (model={})", model);
         }
 
-        Self {
-            http: reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(30))
-                .build()
-                .expect("Failed to build HTTP client"),
-            api_key,
-            model,
-        }
+        let http = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .map_err(|e| anyhow!("Failed to build HTTP client: {}", e))?;
+
+        Ok(Self { http, api_key, model })
     }
 
     pub async fn parse_receipt(&self, image_bytes: &[u8]) -> Result<ParsedReceipt> {

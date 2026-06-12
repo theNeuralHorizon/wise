@@ -7,12 +7,42 @@
 // - Axum router with all API routes
 
 use axum::{
-    extract::DefaultBodyLimit,
+    extract::{ConnectInfo, DefaultBodyLimit, Request, State},
+    http::StatusCode,
+    middleware::{self, Next},
+    response::Response,
     Router,
 };
+use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tokio::sync::RwLock;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+type RateMap = RwLock<HashMap<std::net::IpAddr, (u32, Instant)>>;
+
+async fn rate_limiter(
+    State(rate_map): State<Arc<RateMap>>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let ip = addr.ip();
+    let mut map = rate_map.write().await;
+    let now = Instant::now();
+    let entry = map.entry(ip).or_insert((0, now));
+    if now.duration_since(entry.1) > Duration::from_secs(60) {
+        *entry = (0, now);
+    }
+    entry.0 += 1;
+    if entry.0 > 100 {
+        return Err(StatusCode::TOO_MANY_REQUESTS);
+    }
+    drop(map);
+    Ok(next.run(request).await)
+}
 
 mod ai;
 mod db;
@@ -39,7 +69,7 @@ async fn main() -> anyhow::Result<()> {
     let db = Database::new().await?;
     db.migrate().await?;
 
-    let ai = ai::GeminiClient::new();
+    let ai = ai::GeminiClient::new().map_err(|e| anyhow::anyhow!("Failed to initialize AI client: {}", e))?;
 
     let state = Arc::new(AppState::new(db, ai));
 
@@ -67,11 +97,14 @@ async fn main() -> anyhow::Result<()> {
         .allow_methods(tower_http::cors::Any)
         .allow_headers(tower_http::cors::Any);
 
+    let rate_map: Arc<RateMap> = Arc::new(RwLock::new(HashMap::new()));
+
     let app = Router::new()
         .nest("/api", routes::api_router())
         .layer(cors)
         .layer(tower_http::trace::TraceLayer::new_for_http())
         .layer(DefaultBodyLimit::max(10 * 1024 * 1024))
+        .layer(middleware::from_fn_with_state(rate_map, rate_limiter))
         .with_state(state);
 
     let host = std::env::var("HOST").unwrap_or_else(|_| "::".to_string());
