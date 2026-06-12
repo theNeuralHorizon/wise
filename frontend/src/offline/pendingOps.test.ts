@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getPendingOps, addPendingOp, removePendingOp, clearPendingOps, replayPendingOps, PendingOp } from './pendingOps';
+import { getPendingOps, addPendingOp, removePendingOp, clearPendingOps, replayPendingOps, type PendingOp } from './pendingOps';
 
 const mockStore = new Map<string, unknown>();
 

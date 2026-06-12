@@ -180,9 +180,10 @@ function AppContent() {
     let disposed = false;
 
     function connect() {
-      if (disposed) return;
+      if (disposed || !activeSplitId) return;
+      const splitId = activeSplitId;
       setWsStatus('connecting');
-      const ws = new WebSocket(`${WS_BASE}/ws/${activeSplitId}`);
+      const ws = new WebSocket(`${WS_BASE}/ws/${splitId}`);
       wsRef.current = ws;
 
       ws.onopen = () => { reconnectDelay = 1000; setWsStatus('connected'); };
@@ -193,8 +194,8 @@ function AppContent() {
           if (data.type === 'receipt_parsed') {
             showToast('AI parsed receipt items! ✨');
             if (data.restaurant) setActiveSplitName(data.restaurant);
-            await syncSplitDetails(activeSplitId);
-            navigate(`/split/${activeSplitId}/assign`);
+            await syncSplitDetails(splitId);
+            navigate(`/split/${splitId}/assign`);
           } else if (data.type === 'item_assigned') {
             setAssignments(prev => {
               const next = { ...prev };
@@ -212,23 +213,19 @@ function AppContent() {
             setAssignments(prev => { const next = { ...prev }; delete next[data.item_id]; return next; });
           } else if (data.type === 'split_updated') {
             if (data.restaurant) setActiveSplitName(data.restaurant);
-            await syncSplitDetails(activeSplitId);
+            await syncSplitDetails(splitId);
           } else if (data.type === 'guest_paying') {
             showToast(`💸 ${data.guest_name} paid ₹${(data.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`);
-            if (activeSplitId) {
-              try {
-                const pmts = await api.getPayments(activeSplitId);
-                setPayments(pmts);
-              } catch { /* ignore */ }
-            }
+            try {
+              const pmts = await api.getPayments(splitId);
+              setPayments(pmts);
+            } catch { /* ignore */ }
           } else if (data.type === 'payment_confirmed') {
             showToast('✅ Payment confirmed!');
-            if (activeSplitId) {
-              try {
-                const pmts = await api.getPayments(activeSplitId);
-                setPayments(pmts);
-              } catch { /* ignore */ }
-            }
+            try {
+              const pmts = await api.getPayments(splitId);
+              setPayments(pmts);
+            } catch { /* ignore */ }
           }
         } catch { /* ignore */ }
       };

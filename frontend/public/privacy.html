@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wise - Privacy Policy</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a1a; color: #e8e8f0; line-height: 1.7; }
+    .container { max-width: 720px; margin: 0 auto; padding: 40px 24px; }
+    h1 { font-size: 2rem; margin-bottom: 8px; background: linear-gradient(135deg, #7C6FFF, #22D3A3); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .updated { color: #888; font-size: 0.875rem; margin-bottom: 32px; }
+    h2 { font-size: 1.25rem; margin: 32px 0 12px; color: #c0c0d0; }
+    p { margin-bottom: 16px; color: #a0a0b8; }
+    ul { margin: 0 0 16px 24px; color: #a0a0b8; }
+    li { margin-bottom: 8px; }
+    a { color: #7C6FFF; }
+    .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 32px; }
+    .highlight { background: rgba(124,111,255,0.08); border-left: 3px solid #7C6FFF; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Privacy Policy</h1>
+      <p class="updated">Last updated: June 13, 2026</p>
+
+      <p>Wise ("we", "our", "app") is a bill-splitting application. This privacy policy explains how we handle your data.</p>
+
+      <h2>Data We Collect</h2>
+      <ul>
+        <li><strong>Split data</strong> — Restaurant names, items, prices, and participant names you enter. Stored in our database.</li>
+        <li><strong>UPI IDs</strong> — Only if you voluntarily enter them for payment links. Never shared with third parties.</li>
+        <li><strong>Receipt images</strong> — Temporarily processed for AI parsing. Not stored permanently after parsing.</li>
+        <li><strong>Owner tokens</strong> — Stored locally in your browser (localStorage). Expires after 7 days.</li>
+      </ul>
+
+      <h2>How We Use Your Data</h2>
+      <ul>
+        <li>To calculate bill splits and generate payment links</li>
+        <li>To enable real-time collaboration via WebSocket</li>
+        <li>To provide offline access via browser cache (IndexedDB)</li>
+      </ul>
+
+      <h2>Data We Do NOT Collect</h2>
+      <ul>
+        <li>No user accounts or personal identification</li>
+        <li>No payment processing (we generate UPI deeplinks, but never handle money)</li>
+        <li>No analytics or tracking (except optional error tracking via Sentry)</li>
+        <li>No location data</li>
+        <li>No advertising or marketing data</li>
+      </ul>
+
+      <h2>AI Receipt Parsing</h2>
+      <p>Receipt images are sent to Google Gemini Vision API for parsing. Images are processed ephemerally and not stored by Google beyond standard API logging. If you prefer not to use AI parsing, you can add items manually.</p>
+
+      <h2>Data Retention</h2>
+      <p>Split data is retained indefinitely unless you delete it. Owner tokens expire after 7 days. We may periodically clean up inactive splits.</p>
+
+      <h2>Open Source</h2>
+      <p>Wise is open source software. You can review our code at <a href="https://github.com/theNeuralHorizon/wise">github.com/theNeuralHorizon/wise</a>.</p>
+
+      <h2>Changes</h2>
+      <p>We may update this policy. Continued use of the app constitutes acceptance of changes.</p>
+
+      <div class="highlight">
+        <p><strong>Questions?</strong> Open an issue at <a href="https://github.com/theNeuralHorizon/wise/issues">github.com/theNeuralHorizon/wise/issues</a></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

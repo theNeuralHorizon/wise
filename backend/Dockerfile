@@ -10,7 +10,7 @@ RUN cargo build --release
 
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -s /bin/bash wise
 USER wise
@@ -22,5 +22,8 @@ ENV HOST=0.0.0.0
 ENV PORT=8081
 
 EXPOSE 8081
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=5s \
+  CMD curl -f http://localhost:8081/api/health || exit 1
 
 CMD ["./wise-server"]
