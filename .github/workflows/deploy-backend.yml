@@ -18,13 +18,21 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
 
-      - name: Install wasm-pack
-        run: cargo install wasm-pack
+      - name: Cache wasm-bindgen
+        id: cache-wasm-bindgen
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/worker-build
+          key: wasm-bindgen-0.2.125
+
+      - name: Install wasm-bindgen-cli
+        if: steps.cache-wasm-bindgen.outputs.cache-hit != 'true'
+        run: cargo install wasm-bindgen-cli@0.2.125
 
       - name: Install Wrangler
         run: npm install -g wrangler
 
-      - name: Deploy Worker
+      - name: Build and Deploy Worker
         working-directory: worker
         run: npx wrangler deploy
         env:

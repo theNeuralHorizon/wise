@@ -1,9 +1,2 @@
-name = "wise-frontend"
-compatibility_date = "2024-09-23"
-
-[build]
-command = "npm run build"
-directory = "dist"
-
-[env]
-VITE_API_BASE_URL = "https://your-backend.up.railway.app/api"
+name = "wise"
+pages_build_output_dir = "dist"
