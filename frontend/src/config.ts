@@ -1,28 +1,5 @@
 import { Capacitor } from '@capacitor/core';
 
-const WEB_API_BASE = 'http://localhost:8081/api';
-const ANDROID_EMULATOR_API_BASE = 'http://10.0.2.2:8081/api';
-
-function detectLanIp(): string {
-  if (typeof window === 'undefined') return 'localhost';
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '10.0.2.2') return hostname;
-  return hostname;
-}
-
-function getDeviceApiBase(): string {
-  if (Capacitor.isNativePlatform()) {
-    const lanIp = detectLanIp();
-    if (lanIp !== 'localhost' && lanIp !== '127.0.0.1' && lanIp !== '10.0.2.2') {
-      return `http://${lanIp}:8081/api`;
-    }
-    return ANDROID_EMULATOR_API_BASE;
-  }
-  return WEB_API_BASE;
-}
-
-const DEFAULT_API_BASE = getDeviceApiBase();
-
 function trimTrailingSlash(value: string) {
   return value.replace(/\/+$/, '');
 }
@@ -31,20 +8,58 @@ function apiToWsBase(apiBase: string) {
   return apiBase.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://');
 }
 
-export const API_BASE = trimTrailingSlash(
-  import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE,
-);
+function getApiBase(): string {
+  const envBase = import.meta.env.VITE_API_BASE_URL;
+  if (envBase) return trimTrailingSlash(envBase);
 
-export const WS_BASE = trimTrailingSlash(
-  import.meta.env.VITE_WS_BASE_URL || apiToWsBase(API_BASE),
-);
+  if (Capacitor.isNativePlatform()) {
+    const hostname = window.location.hostname;
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1' && hostname !== '10.0.2.2') {
+      return `http://${hostname}:8081/api`;
+    }
+    return 'http://10.0.2.2:8081/api';
+  }
 
-export const FRONTEND_BASE = trimTrailingSlash(
-  import.meta.env.VITE_FRONTEND_URL ||
-    (typeof window !== 'undefined'
-      ? `${window.location.origin}${window.location.pathname}`
-      : 'http://localhost:5173'),
-);
+  if (import.meta.env.PROD) {
+    throw new Error(
+      'VITE_API_BASE_URL is not set. In production builds, you must set this environment variable. ' +
+      'Example: VITE_API_BASE_URL=https://your-backend.up.railway.app/api'
+    );
+  }
+
+  return 'http://localhost:8081/api';
+}
+
+function getWsBase(): string {
+  const envWs = import.meta.env.VITE_WS_BASE_URL;
+  if (envWs) return trimTrailingSlash(envWs);
+
+  if (import.meta.env.PROD) {
+    const apiBase = import.meta.env.VITE_API_BASE_URL;
+    if (apiBase) return trimTrailingSlash(apiToWsBase(apiBase));
+    throw new Error(
+      'VITE_WS_BASE_URL is not set and VITE_API_BASE_URL is missing. ' +
+      'Set VITE_WS_BASE_URL or VITE_API_BASE_URL in your environment.'
+    );
+  }
+
+  return apiToWsBase(getApiBase());
+}
+
+function getFrontendBase(): string {
+  const envFrontend = import.meta.env.VITE_FRONTEND_URL;
+  if (envFrontend) return trimTrailingSlash(envFrontend);
+
+  if (typeof window !== 'undefined') {
+    return trimTrailingSlash(`${window.location.origin}${window.location.pathname}`);
+  }
+
+  return 'http://localhost:5173';
+}
+
+export const API_BASE = getApiBase();
+export const WS_BASE = getWsBase();
+export const FRONTEND_BASE = getFrontendBase();
 
 export function guestShareLink(token: string) {
   return `${FRONTEND_BASE}/guest/${encodeURIComponent(token)}`;

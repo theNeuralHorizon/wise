@@ -1,165 +1,208 @@
-# Wise Deployment Guide
+# Deploy Wise — Free Hosting (Railway + Cloudflare Pages)
 
-## Option A: Fly.io (Recommended — easiest)
+Zero-cost production deployment. No credit card required.
 
-### Prerequisites
-1. Install flyctl: `curl -L https://fly.io/install.sh | sh`
-2. Sign up: `fly auth signup`
-3. Have a domain ready (optional but recommended)
+| Service | Platform | Cost | Notes |
+|---------|----------|------|-------|
+| Backend (Rust) | Railway | Free ($5/mo credit) | Never spins down |
+| AI Service (Python) | Railway | Free (same project) | Internal only, no public URL |
+| Frontend (static) | Cloudflare Pages | Free forever | Unlimited bandwidth, CDN |
 
-### Step 1: Deploy Backend
+**Total cost: $0/month** (Railway free tier covers ~500 hours, more than enough)
+
+---
+
+## Prerequisites
+
+- GitHub account (you already have this)
+- [Railway account](https://railway.app) — sign up with GitHub
+- [Cloudflare account](https://dash.cloudflare.com/sign-up) — free, no credit card
+
+---
+
+## Step 1: Install CLI Tools
+
 ```bash
-cd backend
-fly launch --no-deploy
-fly secrets set GEMINI_API_KEY=your_key_here
-fly secrets set ALLOWED_ORIGINS=https://your-domain.com,https://wise-app.fly.dev
-fly deploy
+# Railway CLI
+npm install -g @railway/cli
+
+# Cloudflare Wrangler CLI
+npm install -g wrangler
 ```
 
-### Step 2: Deploy Frontend
+## Step 2: Create Railway Project
+
+```bash
+# Login to Railway
+railway login
+
+# Initialize a new Railway project (in the repo root)
+railway init
+
+# Link to your project
+railway link
+```
+
+### Add Backend Service
+
+```bash
+# Create a service for the backend
+railway service create backend
+
+# Set the Dockerfile path
+railway variables set RAILWAY_DOCKERFILE_PATH=backend/Dockerfile.prod --service backend
+
+# Set environment variables
+railway variables set HOST=0.0.0.0 --service backend
+railway variables set PORT=8081 --service backend
+railway variables set DATABASE_URL="sqlite:/app/data/wise.db?mode=rwc" --service backend
+railway variables set AI_SERVICE_URL="http://ai_service.railway.internal:5000/parse" --service backend
+railway variables set ALLOWED_ORIGINS="*" --service backend
+
+# Deploy
+railway up --service backend
+```
+
+### Add AI Service
+
+```bash
+# Create a service for the AI microservice
+railway service create ai_service
+
+# Set the Dockerfile path
+railway variables set RAILWAY_DOCKERFILE_PATH=Dockerfile --service ai_service
+
+# Set environment variables
+railway variables set PORT=5000 --service ai_service
+railway variables set GEMINI_API_KEY="your_gemini_api_key" --service ai_service
+
+# Deploy
+railway up --service ai_service
+```
+
+### Get Your Backend URL
+
+```bash
+# Generate a public domain for the backend
+railway domain --service backend
+
+# This gives you something like: wise-backend-production.up.railway.app
+# Copy this URL — you'll need it for the frontend.
+```
+
+### Set Backend PUBLIC_URL
+
+```bash
+# Set the public URL so guest links point to the frontend
+railway variables set PUBLIC_URL="https://wise.pages.dev" --service backend
+railway variables set BASE_URL="https://wise-backend-production.up.railway.app" --service backend
+
+# Redeploy to pick up new env vars
+railway up --service backend
+```
+
+### Persist SQLite Data (Optional)
+
+Railway's filesystem is ephemeral — data resets on redeploy. To fix this:
+
+1. Go to Railway dashboard → your backend service → Settings
+2. Add a volume: mount path = `/app/data`
+3. Set `DATABASE_URL=sqlite:/app/data/wise.db?mode=rwc`
+
+This is fine for a student project with low traffic.
+
+## Step 3: Deploy Frontend to Cloudflare Pages
+
 ```bash
 cd frontend
-# Update fly.toml env with your backend URL
-fly launch --no-deploy
-fly secrets set VITE_API_BASE_URL=https://your-backend.fly.dev/api
-fly secrets set VITE_WS_BASE_URL=wss://your-backend.fly.dev
-fly secrets set VITE_FRONTEND_URL=https://your-domain.com
-fly deploy
+
+# Login to Cloudflare
+npx wrangler login
+
+# Set your backend API URL (replace with your actual Railway URL)
+export VITE_API_BASE_URL="https://your-backend.up.railway.app/api"
+
+# Build
+npm run build
+
+# Deploy
+npx wrangler pages deploy dist --project-name=wise
 ```
 
-### Step 3: Custom Domain (optional)
-```bash
-fly certs add your-domain.com
-fly certs add www.your-domain.com
-```
+This gives you: `https://wise.pages.dev`
 
-### Step 4: Set Up SQLite Volume
-```bash
-fly volume create wise_data:1 --region iad
-```
+### Set Custom Domain (Optional)
 
-Update `fly.toml`:
-```toml
-[mounts]
-  source = "wise_data"
-  destination = "/data"
-```
+1. Go to Cloudflare Dashboard → Pages → wise → Custom domains
+2. Add your domain (e.g., `wise.yourdomain.com`)
+3. Cloudflare handles SSL automatically — free, zero config
 
-## Option B: Docker Compose (VPS)
-
-### On your VPS (Ubuntu/Debian)
-```bash
-# Install Docker
-curl -fsSL https://get.docker.com | sh
-
-# Clone repo
-git clone https://github.com/theNeuralHorizon/wise.git
-cd wise
-
-# Configure
-cp .env.example .env
-# Edit .env with your GEMINI_API_KEY
-
-# Start
-docker-compose up -d
-
-# Set up nginx reverse proxy + SSL
-apt install nginx certbot python3-certbot-nginx
-```
-
-### Nginx config (`/etc/nginx/sites-available/wise`)
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name your-domain.com;
-
-    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
-
-    location / {
-        proxy_pass http://127.0.0.1:5173;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /api {
-        proxy_pass http://127.0.0.1:8081;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-
-    location /ws {
-        proxy_pass http://127.0.0.1:8081;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-    }
-}
-```
+## Step 4: Update Backend CORS
 
 ```bash
-ln -s /etc/nginx/sites-available/wise /etc/nginx/sites-enabled/
-certbot --nginx -d your-domain.com
-systemctl reload nginx
+# Update CORS to allow your Cloudflare Pages domain
+railway variables set ALLOWED_ORIGINS="https://wise.pages.dev,http://localhost:5173" --service backend
+
+# Redeploy
+railway up --service backend
 ```
 
-## Option C: Railway / Render (one-click)
+## Step 5: Set Up GitHub Actions (Auto-Deploy)
 
-### Railway
-1. Push to GitHub
-2. Go to railway.app → New Project → Deploy from GitHub
-3. Add backend service, set env vars
-4. Add frontend service, set env vars
+### Railway Token
 
-### Render
-1. Push to GitHub
-2. Go to render.com → New Web Service
-3. Select repo, set build commands
-4. Add environment variables
+1. Go to Railway dashboard → Account Settings → Tokens
+2. Create a new token, copy it
+3. Go to your GitHub repo → Settings → Secrets and variables → Actions
+4. Add secret: `RAILWAY_TOKEN` = your token
 
-## Environment Variables
+### Cloudflare Tokens
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `GEMINI_API_KEY` | No | Gemini Vision API key (demo mode without) |
-| `DATABASE_URL` | Yes | SQLite connection string |
-| `ALLOWED_ORIGINS` | Yes | Comma-separated CORS origins |
-| `HOST` | Yes | Bind address (0.0.0.0 for production) |
-| `PORT` | Yes | Listen port (8081) |
-| `RUST_LOG` | No | Log level filter |
-| `VITE_API_BASE_URL` | Yes | Frontend API URL |
-| `VITE_WS_BASE_URL` | Yes | Frontend WebSocket URL |
-| `VITE_FRONTEND_URL` | Yes | Frontend public URL |
+1. Go to Cloudflare Dashboard → My Profile → API Tokens
+2. Create token with `Cloudflare Pages:Edit` permissions
+3. Copy the token
+4. Go to your Cloudflare Dashboard → right sidebar → Account ID
+5. Copy the Account ID
+6. Add to GitHub secrets:
+   - `CLOUDFLARE_API_TOKEN` = your API token
+   - `CLOUDFLARE_ACCOUNT_ID` = your account ID
+   - `VITE_API_BASE_URL` = `https://your-backend.up.railway.app/api`
 
-## Health Checks
+### Done
 
-- Backend: `GET /api/health` returns `{"status": "ok"}`
-- Fly.io auto-monitors this endpoint
-- For external monitoring: use Uptime Robot, Betterstack, or similar
+Push to `main` now auto-deploys:
+- `backend/` or `ai_service/` changes → Railway
+- `frontend/` changes → Cloudflare Pages
 
-## Backups
+---
 
-SQLite database is at `/data/wise.db` (Docker) or `./wise.db` (local).
+## WebSocket
 
-### Automated backup script
-```bash
-#!/bin/bash
-DATE=$(date +%Y%m%d_%H%M%S)
-cp /data/wise.db /backups/wise_${DATE}.db
-# Keep last 7 days
-find /backups -name "wise_*.db" -mtime +7 -delete
-```
+Railway supports WebSocket on the same port as HTTP. No special config needed.
+The frontend auto-detects WS from the API base URL (https→wss, http→ws).
 
-### Fly.io volume backup
-```bash
-fly ssh console -C "cat /data/wise.db" > wise_backup_$(date +%Y%m%d).db
-```
+## Troubleshooting
+
+**"VITE_API_BASE_URL is not set"** — Set this in GitHub Actions secrets or Cloudflare Pages build env.
+
+**Guest link doesn't work** — Make sure `PUBLIC_URL` is set on the backend to your frontend URL.
+
+**CORS errors** — Make sure `ALLOWED_ORIGINS` on the backend includes your Cloudflare Pages URL.
+
+**AI service not responding** — Check that `AI_SERVICE_URL=http://ai_service.railway.internal:5000/parse` is set on the backend service.
+
+**Data lost after redeploy** — Railway filesystem is ephemeral. Add a volume for SQLite persistence (see Step 2).
+
+---
+
+## Comparison: Free Hosting Options
+
+| Platform | Free Tier | Spin Down | Best For |
+|----------|-----------|-----------|----------|
+| **Railway** | $5/mo credit, ~500 hrs | No | This app ✓ |
+| Render | Free tier | 15 min inactivity | Static sites only |
+| Fly.io | 3 shared VMs | No | Needs credit card |
+| Vercel | Free, 100GB bandwidth | Serverless (cold starts) | Frontend only |
+| Cloudflare Pages | Free, unlimited | N/A (static) | Frontend ✓ |
+
+**Railway wins** for this stack: Rust binary, no spin down, internal networking, $0 cost.
