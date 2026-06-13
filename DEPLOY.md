@@ -1,208 +1,203 @@
-# Deploy Wise — Free Hosting (Railway + Cloudflare Pages)
+# Deploy Wise — Cloudflare Free Tier (Workers + Pages + D1 + R2)
 
-Zero-cost production deployment. No credit card required.
+Zero-cost, zero-credit-card, zero-expiry deployment on Cloudflare's edge.
 
-| Service | Platform | Cost | Notes |
-|---------|----------|------|-------|
-| Backend (Rust) | Railway | Free ($5/mo credit) | Never spins down |
-| AI Service (Python) | Railway | Free (same project) | Internal only, no public URL |
-| Frontend (static) | Cloudflare Pages | Free forever | Unlimited bandwidth, CDN |
+| Service | Platform | Free Tier |
+|---------|----------|-----------|
+| Backend API | Cloudflare Workers | 100k requests/day |
+| Database | Cloudflare D1 | 100k writes/day, 5GB reads/day |
+| File Storage | Cloudflare R2 | 10GB, 1M requests/month |
+| WebSocket | Durable Objects | 400k requests/month |
+| Frontend | Cloudflare Pages | Unlimited bandwidth |
+| AI Parsing | Google Gemini API | Free tier (existing key) |
 
-**Total cost: $0/month** (Railway free tier covers ~500 hours, more than enough)
+**Total cost: $0/month forever.**
 
 ---
 
 ## Prerequisites
 
-- GitHub account (you already have this)
-- [Railway account](https://railway.app) — sign up with GitHub
 - [Cloudflare account](https://dash.cloudflare.com/sign-up) — free, no credit card
+- [Google Gemini API key](https://aistudio.google.com/apikey) — already have this
+- GitHub account
 
 ---
 
-## Step 1: Install CLI Tools
+## Step 1: Install Tools
 
 ```bash
-# Railway CLI
-npm install -g @railway/cli
-
-# Cloudflare Wrangler CLI
+# Wrangler CLI (Cloudflare)
 npm install -g wrangler
+
+# Login to Cloudflare
+wrangler login
 ```
 
-## Step 2: Create Railway Project
+## Step 2: Create D1 Database
 
 ```bash
-# Login to Railway
-railway login
+cd worker
 
-# Initialize a new Railway project (in the repo root)
-railway init
+# Create the database
+wrangler d1 create wise
+# → Copy the database_id into wrangler.toml (replace FILL_AFTER_CREATE)
 
-# Link to your project
-railway link
+# Apply the schema
+wrangler d1 execute wise --file=schema.sql
 ```
 
-### Add Backend Service
+## Step 3: Create R2 Bucket
 
 ```bash
-# Create a service for the backend
-railway service create backend
-
-# Set the Dockerfile path
-railway variables set RAILWAY_DOCKERFILE_PATH=backend/Dockerfile.prod --service backend
-
-# Set environment variables
-railway variables set HOST=0.0.0.0 --service backend
-railway variables set PORT=8081 --service backend
-railway variables set DATABASE_URL="sqlite:/app/data/wise.db?mode=rwc" --service backend
-railway variables set AI_SERVICE_URL="http://ai_service.railway.internal:5000/parse" --service backend
-railway variables set ALLOWED_ORIGINS="*" --service backend
-
-# Deploy
-railway up --service backend
+wrangler r2 bucket create wise-receipts
 ```
 
-### Add AI Service
+## Step 4: Set Secrets
 
 ```bash
-# Create a service for the AI microservice
-railway service create ai_service
+# Gemini API key
+wrangler secret put GEMINI_API_KEY
+# Paste your key when prompted
 
-# Set the Dockerfile path
-railway variables set RAILWAY_DOCKERFILE_PATH=Dockerfile --service ai_service
-
-# Set environment variables
-railway variables set PORT=5000 --service ai_service
-railway variables set GEMINI_API_KEY="your_gemini_api_key" --service ai_service
-
-# Deploy
-railway up --service ai_service
+# Allowed origins (your Pages domain)
+wrangler secret put ALLOWED_ORIGINS
+# Paste: https://wise.pages.dev
 ```
 
-### Get Your Backend URL
+## Step 5: Deploy the Worker
 
 ```bash
-# Generate a public domain for the backend
-railway domain --service backend
-
-# This gives you something like: wise-backend-production.up.railway.app
-# Copy this URL — you'll need it for the frontend.
+cd worker
+wrangler deploy
+# → Your API is live at: https://wise-api.YOUR_SUBDOMAIN.workers.dev
 ```
 
-### Set Backend PUBLIC_URL
-
-```bash
-# Set the public URL so guest links point to the frontend
-railway variables set PUBLIC_URL="https://wise.pages.dev" --service backend
-railway variables set BASE_URL="https://wise-backend-production.up.railway.app" --service backend
-
-# Redeploy to pick up new env vars
-railway up --service backend
-```
-
-### Persist SQLite Data (Optional)
-
-Railway's filesystem is ephemeral — data resets on redeploy. To fix this:
-
-1. Go to Railway dashboard → your backend service → Settings
-2. Add a volume: mount path = `/app/data`
-3. Set `DATABASE_URL=sqlite:/app/data/wise.db?mode=rwc`
-
-This is fine for a student project with low traffic.
-
-## Step 3: Deploy Frontend to Cloudflare Pages
+## Step 6: Deploy Frontend
 
 ```bash
 cd frontend
 
-# Login to Cloudflare
-npx wrangler login
-
-# Set your backend API URL (replace with your actual Railway URL)
-export VITE_API_BASE_URL="https://your-backend.up.railway.app/api"
+# Set your Worker API URL
+export VITE_API_BASE_URL="https://wise-api.YOUR_SUBDOMAIN.workers.dev/api"
+export VITE_WS_BASE_URL="wss://wise-api.YOUR_SUBDOMAIN.workers.dev/api/ws"
 
 # Build
 npm run build
 
-# Deploy
+# Deploy to Pages
 npx wrangler pages deploy dist --project-name=wise
+# → Your frontend is live at: https://wise.pages.dev
 ```
 
-This gives you: `https://wise.pages.dev`
-
-### Set Custom Domain (Optional)
-
-1. Go to Cloudflare Dashboard → Pages → wise → Custom domains
-2. Add your domain (e.g., `wise.yourdomain.com`)
-3. Cloudflare handles SSL automatically — free, zero config
-
-## Step 4: Update Backend CORS
+## Step 7: Update Worker Secrets with Frontend URL
 
 ```bash
-# Update CORS to allow your Cloudflare Pages domain
-railway variables set ALLOWED_ORIGINS="https://wise.pages.dev,http://localhost:5173" --service backend
+cd worker
+wrangler secret put ALLOWED_ORIGINS
+# Paste: https://wise.pages.dev
 
-# Redeploy
-railway up --service backend
+wrangler secret put PUBLIC_URL
+# Paste: https://wise.pages.dev
+
+wrangler deploy  # Redeploy to pick up env changes
 ```
 
-## Step 5: Set Up GitHub Actions (Auto-Deploy)
+---
 
-### Railway Token
+## Set Up GitHub Actions (Auto-Deploy)
 
-1. Go to Railway dashboard → Account Settings → Tokens
-2. Create a new token, copy it
-3. Go to your GitHub repo → Settings → Secrets and variables → Actions
-4. Add secret: `RAILWAY_TOKEN` = your token
+### Secrets to Add
 
-### Cloudflare Tokens
+Go to your GitHub repo → Settings → Secrets and variables → Actions:
 
-1. Go to Cloudflare Dashboard → My Profile → API Tokens
-2. Create token with `Cloudflare Pages:Edit` permissions
-3. Copy the token
-4. Go to your Cloudflare Dashboard → right sidebar → Account ID
-5. Copy the Account ID
-6. Add to GitHub secrets:
-   - `CLOUDFLARE_API_TOKEN` = your API token
-   - `CLOUDFLARE_ACCOUNT_ID` = your account ID
-   - `VITE_API_BASE_URL` = `https://your-backend.up.railway.app/api`
+| Secret | Value | Where to find it |
+|--------|-------|-----------------|
+| `CLOUDFLARE_API_TOKEN` | API token | Cloudflare Dashboard → My Profile → API Tokens → Create Token |
+| `CLOUDFLARE_ACCOUNT_ID` | Account ID | Cloudflare Dashboard → right sidebar |
+| `VITE_API_BASE_URL` | `https://wise-api.YOUR_SUBDOMAIN.workers.dev/api` | From wrangler deploy output |
+| `VITE_WS_BASE_URL` | `wss://wise-api.YOUR_SUBDOMAIN.workers.dev/api/ws` | Same, with wss:// |
 
-### Done
+### Token Permissions
 
-Push to `main` now auto-deploys:
-- `backend/` or `ai_service/` changes → Railway
-- `frontend/` changes → Cloudflare Pages
+When creating the API token, select:
+- `Cloudflare Workers:Edit`
+- `Cloudflare D1:Edit`
+- `Cloudflare R2:Edit`
+- `Cloudflare Pages:Edit`
 
 ---
 
 ## WebSocket
 
-Railway supports WebSocket on the same port as HTTP. No special config needed.
-The frontend auto-detects WS from the API base URL (https→wss, http→ws).
+WebSocket connections go through Durable Objects — Cloudflare's stateful edge compute.
+No special configuration needed. The frontend auto-detects WS from the API base URL.
 
-## Troubleshooting
+Route: `GET /api/ws/:split_id` → Durable Object `SplitSocket` → accepts WebSocket upgrade.
 
-**"VITE_API_BASE_URL is not set"** — Set this in GitHub Actions secrets or Cloudflare Pages build env.
+## SQLite (D1)
 
-**Guest link doesn't work** — Make sure `PUBLIC_URL` is set on the backend to your frontend URL.
+D1 is Cloudflare's managed SQLite. It's not ephemeral — data persists across deploys.
 
-**CORS errors** — Make sure `ALLOWED_ORIGINS` on the backend includes your Cloudflare Pages URL.
+Free tier: 100k writes/day, 5GB reads/day. More than enough for a student project.
 
-**AI service not responding** — Check that `AI_SERVICE_URL=http://ai_service.railway.internal:5000/parse` is set on the backend service.
+## Receipt Images (R2)
 
-**Data lost after redeploy** — Railway filesystem is ephemeral. Add a volume for SQLite persistence (see Step 2).
+Receipt images are stored in R2 (Cloudflare's S3-compatible storage).
+Free tier: 10GB storage, 1M requests/month.
 
 ---
 
-## Comparison: Free Hosting Options
+## Local Development
 
-| Platform | Free Tier | Spin Down | Best For |
-|----------|-----------|-----------|----------|
-| **Railway** | $5/mo credit, ~500 hrs | No | This app ✓ |
-| Render | Free tier | 15 min inactivity | Static sites only |
-| Fly.io | 3 shared VMs | No | Needs credit card |
-| Vercel | Free, 100GB bandwidth | Serverless (cold starts) | Frontend only |
-| Cloudflare Pages | Free, unlimited | N/A (static) | Frontend ✓ |
+```bash
+cd worker
 
-**Railway wins** for this stack: Rust binary, no spin down, internal networking, $0 cost.
+# Run Worker locally with D1 + R2 emulation
+wrangler dev --local --port 8081
+
+# Frontend (separate terminal)
+cd frontend
+npm run dev
+```
+
+`wrangler dev --local` emulates D1, R2, and Durable Objects locally using SQLite files.
+
+---
+
+## Troubleshooting
+
+**"VITE_API_BASE_URL is not set"** — Set this in GitHub Actions secrets or your shell before building.
+
+**CORS errors** — Make sure `ALLOWED_ORIGINS` secret includes your Pages domain.
+
+**WebSocket not connecting** — Check that `VITE_WS_BASE_URL` uses `wss://` (not `ws://`).
+
+**D1 read/write errors** — Check wrangler.toml has the correct `database_id`.
+
+**Receipt upload fails** — Check R2 bucket exists and `RECEIPTS` binding is correct.
+
+---
+
+## Architecture
+
+```
+Browser → Cloudflare Pages (frontend)
+       → Cloudflare Workers (API)
+       → D1 (SQLite database)
+       → R2 (receipt images)
+       → Durable Objects (WebSocket)
+       → Google Gemini API (receipt parsing)
+```
+
+Everything runs on Cloudflare's edge network. No VMs, no Docker, no cold starts.
+
+## What Changed from Docker Setup
+
+- `backend/` → rewritten as Cloudflare Worker (workers-rs)
+- SQLite file → D1 (managed SQLite)
+- File uploads → R2 (object storage)
+- WebSocket broadcasts → Durable Objects
+- Python AI service → eliminated (Gemini called directly from Worker)
+- Docker Compose → wrangler.toml
+- `setup-vps.sh` → not needed
+- `deploy.sh` → `wrangler deploy`

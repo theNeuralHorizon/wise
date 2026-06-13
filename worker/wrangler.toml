@@ -1,0 +1,23 @@
+name = "wise-api"
+main = "src/lib.rs"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "wise"
+database_id = "FILL_AFTER_CREATE"
+
+[[r2_buckets]]
+binding = "RECEIPTS"
+bucket_name = "wise-receipts"
+
+[durable_objects]
+bindings = [{ name = "SPLIT_SOCKET", class_name = "SplitSocket" }]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["SplitSocket"]
+
+[vars]
+ENVIRONMENT = "production"
