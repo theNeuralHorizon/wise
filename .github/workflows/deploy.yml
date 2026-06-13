@@ -1,0 +1,38 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER || 'wise' }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/wise
+
+            echo "→ Pulling latest code..."
+            git fetch origin
+            git checkout main
+            git pull origin main
+
+            echo "→ Building and starting services..."
+            sudo docker compose -f docker-compose.prod.yml up -d --build
+
+            echo "→ Waiting for services..."
+            sleep 5
+
+            echo "→ Service status:"
+            sudo docker compose -f docker-compose.prod.yml ps
+
+            echo "→ Health check:"
+            curl -sf http://localhost/api/health && echo " API OK" || echo " API NOT READY"
+
+            echo "=== Deploy complete ==="

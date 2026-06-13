@@ -9,6 +9,7 @@
 
 # Environment config and keys
 **/.env
+.env.production
 
 # Python byte-code / cache
 **/__pycache__/
