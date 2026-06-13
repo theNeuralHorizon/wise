@@ -27,7 +27,7 @@ Rules:
 
 pub async fn parse_receipt(
     env: &Env,
-    r2: &Bucket,
+    r2: Option<&Bucket>,
     split_id: &str,
     image_bytes: &[u8],
 ) -> Result<ParsedReceipt> {
@@ -107,9 +107,11 @@ pub async fn parse_receipt(
 
     parsed.is_mock = false;
 
-    // Upload image to R2 for reference
-    let r2_key = format!("receipts/{}/{}", split_id, chrono::Utc::now().timestamp());
-    r2.put(&r2_key, image_bytes.to_vec()).execute().await?;
+    // Upload image to R2 for reference (if R2 is configured)
+    if let Some(bucket) = r2 {
+        let r2_key = format!("receipts/{}/{}", split_id, chrono::Utc::now().timestamp());
+        let _ = bucket.put(&r2_key, image_bytes.to_vec()).execute().await;
+    }
 
     Ok(parsed)
 }

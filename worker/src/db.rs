@@ -1,6 +1,17 @@
+use wasm_bindgen::JsValue;
 use worker::*;
 
 use crate::models::*;
+
+pub trait D1Num {
+    fn d1(self) -> JsValue;
+}
+impl D1Num for i64 {
+    fn d1(self) -> JsValue { JsValue::from_f64(self as f64) }
+}
+impl D1Num for f64 {
+    fn d1(self) -> JsValue { JsValue::from_f64(self) }
+}
 
 pub async fn create_split(db: &D1Database, req: &CreateSplitRequest) -> Result<SplitCreated> {
     let split_id = uuid::Uuid::new_v4().to_string();
@@ -178,7 +189,7 @@ pub async fn get_summary(db: &D1Database, split_id: &str) -> Result<SplitSummary
         .unwrap_or(0);
 
     let summary_results: Vec<serde_json::Value> = db
-        .prepare("SELECT p.id, p.name, p.emoji, p.upi_id, COALESCE(SUM(CAST(i.price * ia.share_fraction AS INTEGER)), 0) as subtotal, GROUP_CONCAT(i.name, ', ') as item_names FROM participants p LEFT JOIN item_assignments ia ON ia.participant_id = p.id LEFT JOIN items i ON i.id = ia.item_id AND i.split_id = ?1 WHERE p.split_id = ?1 GROUP BY p.id, p.name, p.emoji, p.upi_id ORDER BY p.rowid")
+        .prepare("SELECT p.id, p.name, p.emoji, p.upi_id, COALESCE(SUM(CAST(i.price * ia.share_fraction AS INTEGER)), 0) as subtotal, GROUP_CONCAT(i.name, ', ') as item_names FROM participants p LEFT JOIN item_assignments ia ON ia.participant_id = p.id LEFT JOIN items i ON i.id = ia.item_id AND i.split_id = ?2 WHERE p.split_id = ?1 GROUP BY p.id, p.name, p.emoji, p.upi_id ORDER BY p.rowid")
         .bind(&[split_id.into(), split_id.into()])?
         .all()
         .await?
@@ -249,7 +260,7 @@ pub async fn assign_item(
         let share = 1.0 / n;
         for pid in participant_ids {
             db.prepare("INSERT INTO item_assignments (item_id, participant_id, share_fraction) VALUES (?1, ?2, ?3)")
-                .bind(&[item_id.into(), pid.clone().into(), share.into()])?
+                .bind(&[item_id.into(), pid.clone().into(), share.d1()])?
                 .run()
                 .await?;
         }
@@ -268,7 +279,7 @@ pub async fn add_item(
 ) -> Result<String> {
     let item_id = uuid::Uuid::new_v4().to_string();
     db.prepare("INSERT INTO items (id, split_id, name, price, quantity, emoji) VALUES (?1, ?2, ?3, ?4, ?5, ?6)")
-        .bind(&[item_id.clone().into(), split_id.into(), name.into(), price.into(), quantity.into(), emoji.into()])?
+        .bind(&[item_id.clone().into(), split_id.into(), name.into(), price.d1(), quantity.d1(), emoji.into()])?
         .run()
         .await?;
 
@@ -284,7 +295,7 @@ pub async fn edit_item(
     price: i64,
 ) -> Result<()> {
     db.prepare("UPDATE items SET name = ?1, price = ?2 WHERE id = ?3 AND split_id = ?4")
-        .bind(&[name.into(), price.into(), item_id.into(), split_id.into()])?
+        .bind(&[name.into(), price.d1(), item_id.into(), split_id.into()])?
         .run()
         .await?;
 
@@ -319,7 +330,7 @@ pub async fn update_split(
 
     if let (Some(tax), Some(tip)) = (tax, tip) {
         db.prepare("UPDATE splits SET restaurant = ?1, name = ?2, tax = ?3, tip = ?4 WHERE id = ?5")
-            .bind(&[restaurant.into(), split_name.into(), tax.into(), tip.into(), split_id.into()])?
+            .bind(&[restaurant.into(), split_name.into(), tax.d1(), tip.d1(), split_id.into()])?
             .run()
             .await?;
     } else {
@@ -359,7 +370,7 @@ async fn recalculate_total(db: &D1Database, split_id: &str) -> Result<()> {
     let total = subtotal + tax + tip;
 
     db.prepare("UPDATE splits SET total_amount = ?1 WHERE id = ?2")
-        .bind(&[total.into(), split_id.into()])?
+        .bind(&[total.d1(), split_id.into()])?
         .run()
         .await?;
 
@@ -489,7 +500,7 @@ pub async fn guest_pay(
     let now = chrono::Utc::now().to_rfc3339();
 
     db.prepare("INSERT INTO payments (id, split_id, from_participant, to_participant, amount, status, created_at) VALUES (?1, ?2, ?3, ?4, ?5, 'pending', ?6)")
-        .bind(&[payment_id.clone().into(), split_id.clone().into(), from_participant_id.into(), host_participant_id.unwrap_or_default().into(), body.amount.into(), now.into()])?
+        .bind(&[payment_id.clone().into(), split_id.clone().into(), from_participant_id.into(), host_participant_id.unwrap_or_default().into(), body.amount.d1(), now.into()])?
         .run()
         .await?;
 

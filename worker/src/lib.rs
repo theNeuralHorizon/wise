@@ -8,6 +8,7 @@ mod models;
 mod ws;
 
 use models::*;
+use db::D1Num;
 
 fn cors_response(req: &Request, resp: Response) -> Result<Response> {
     let headers = Headers::new();
@@ -44,7 +45,6 @@ fn error_response(req: &Request, status: u16, message: &str) -> Result<Response>
 
 #[event(fetch)]
 pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response> {
-    // Handle CORS preflight
     if req.method() == Method::Options {
         let mut resp = Response::ok("")?;
         let headers = Headers::new();
@@ -60,20 +60,32 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
     let path = url.path().to_string();
     let method = req.method().clone();
 
+    if method == Method::Get && path.starts_with("/api/ws/") {
+        let split_id = path.trim_start_matches("/api/ws/").to_string();
+        let namespace = env.durable_object("SPLIT_SOCKET")?;
+        let do_id = namespace.id_from_name(&split_id)?;
+        let stub = do_id.get_stub()?;
+        return stub.fetch_with_request(req).await;
+    }
+
     let db = env.d1("DB")?;
-    let r2 = env.bucket("RECEIPTS")?;
 
-    // ── ROUTING ─────────────────────────────────────────────────────────────
+    if path == "/health" && method == Method::Get {
+        let body = serde_json::json!({ "status": "ok" });
+        return json_response(&req, &body);
+    }
 
-    // GET /api/health
     if path == "/api/health" && method == Method::Get {
         let body = db::health(&db).await?;
         return json_response(&req, &body);
     }
 
-    // POST /api/splits
     if path == "/api/splits" && method == Method::Post {
-        let body: CreateSplitRequest = req.json().await?;
+        let raw = req.text().await?;
+        let body: CreateSplitRequest = match serde_json::from_str(&raw) {
+            Ok(b) => b,
+            Err(e) => return error_response(&req, 400, &format!("Invalid JSON: {}", e)),
+        };
         if body.participants.is_empty() {
             return error_response(&req, 400, "At least one participant required");
         }
@@ -83,7 +95,6 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
         };
     }
 
-    // GET /api/splits/:id
     if method == Method::Get && path.starts_with("/api/splits/") {
         let rest = path.trim_start_matches("/api/splits/");
         if !rest.contains('/') && !rest.is_empty() {
@@ -109,7 +120,6 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
         }
     }
 
-    // POST /api/splits/:id/receipt
     if method == Method::Post && path.contains("/receipt") {
         let split_id = path
             .trim_start_matches("/api/splits/")
@@ -125,7 +135,8 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
         let body = req.text().await?;
         let bytes = body.as_bytes();
 
-        let parsed = match ai::parse_receipt(&env, &r2, split_id, bytes).await {
+        let r2 = env.bucket("RECEIPTS").ok();
+        let parsed = match ai::parse_receipt(&env, r2.as_ref(), split_id, bytes).await {
             Ok(p) => p,
             Err(_) => ai::mock_receipt(),
         };
@@ -136,7 +147,7 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
 
         let _ = db
             .prepare("UPDATE splits SET restaurant = ?1, total_amount = ?2, tax = ?3, tip = ?4 WHERE id = ?5")
-            .bind(&[parsed.restaurant.clone().into(), total_paise.into(), tax_paise.into(), tip_paise.into(), split_id.into()])?
+            .bind(&[parsed.restaurant.clone().into(), total_paise.d1(), tax_paise.d1(), tip_paise.d1(), split_id.into()])?
             .run()
             .await;
 
@@ -151,7 +162,7 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
             let actual_price = (item.price * item.quantity as f64).round() as i64;
             let _ = db
                 .prepare("INSERT INTO items (id, split_id, name, price, quantity, emoji) VALUES (?1, ?2, ?3, ?4, ?5, ?6)")
-                .bind(&[item_id.clone().into(), split_id.into(), item.name.clone().into(), actual_price.into(), item.quantity.into(), item.emoji.clone().into()])?
+                .bind(&[item_id.clone().into(), split_id.into(), item.name.clone().into(), actual_price.d1(), item.quantity.d1(), item.emoji.clone().into()])?
                 .run()
                 .await;
 
@@ -194,10 +205,9 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
         }));
     }
 
-    // PUT /api/splits/:id/items/:item_id/assign
     if method == Method::Put && path.contains("/assign") {
         let stripped = path.trim_start_matches("/api/splits/").trim_end_matches("/assign");
-        let parts: Vec<&str> = stripped.splitn(2, '/').collect();
+        let parts: Vec<&str> = stripped.splitn(2, "/items/").collect();
         if parts.len() != 2 {
             return error_response(&req, 400, "Invalid path");
         }
@@ -222,7 +232,6 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
         return json_response(&req, &serde_json::json!({ "status": "ok", "item_id": item_id }));
     }
 
-    // POST /api/splits/:id/items
     if method == Method::Post && path.starts_with("/api/splits/") && path.ends_with("/items") {
         let split_id = path.trim_start_matches("/api/splits/").trim_end_matches("/items");
         let owner_token = match auth::extract_owner_token(&req) {
@@ -245,7 +254,6 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
         };
     }
 
-    // PUT /api/splits/:id/items/:item_id
     if method == Method::Put && path.starts_with("/api/splits/") && path.contains("/items/") {
         let stripped = path.trim_start_matches("/api/splits/");
         let parts: Vec<&str> = stripped.splitn(2, "/items/").collect();
@@ -270,7 +278,6 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
         return json_response(&req, &serde_json::json!({ "status": "ok" }));
     }
 
-    // DELETE /api/splits/:id/items/:item_id
     if method == Method::Delete && path.starts_with("/api/splits/") && path.contains("/items/") {
         let stripped = path.trim_start_matches("/api/splits/");
         let parts: Vec<&str> = stripped.splitn(2, "/items/").collect();
@@ -294,7 +301,6 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
         return json_response(&req, &serde_json::json!({ "status": "ok" }));
     }
 
-    // PUT /api/splits/:id/update
     if method == Method::Put && path.ends_with("/update") {
         let split_id = path.trim_start_matches("/api/splits/").trim_end_matches("/update");
         let owner_token = match auth::extract_owner_token(&req) {
@@ -314,7 +320,6 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
         return json_response(&req, &serde_json::json!({ "status": "ok" }));
     }
 
-    // POST /api/splits/:id/payments/:payment_id/confirm
     if method == Method::Post && path.contains("/payments/") && path.ends_with("/confirm") {
         let without_confirm = path.trim_end_matches("/confirm");
         let stripped = without_confirm.trim_start_matches("/api/splits/");
@@ -338,7 +343,6 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
         };
     }
 
-    // GET /api/guest/:token
     if method == Method::Get && path.starts_with("/api/guest/") && !path.ends_with("/pay") {
         let token = path.trim_start_matches("/api/guest/").trim_end_matches('/');
         return match db::get_guest_view(&db, token).await {
@@ -347,7 +351,6 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
         };
     }
 
-    // POST /api/guest/:token/pay
     if method == Method::Post && path.starts_with("/api/guest/") && path.ends_with("/pay") {
         let token = path.trim_start_matches("/api/guest/").trim_end_matches("/pay");
         let body: GuestPayRequest = req.json().await?;
@@ -355,15 +358,6 @@ pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response>
             Ok(result) => json_response(&req, &result),
             Err(e) => error_response(&req, 400, &e.to_string()),
         };
-    }
-
-    // GET /api/ws/:split_id — WebSocket
-    if method == Method::Get && path.starts_with("/api/ws/") {
-        let split_id = path.trim_start_matches("/api/ws/");
-        let namespace = env.durable_object("SPLIT_SOCKET")?;
-        let do_id = namespace.id_from_name(split_id)?;
-        let stub = do_id.get_stub()?;
-        return stub.fetch_with_request(req).await;
     }
 
     error_response(&req, 404, "Not found")
