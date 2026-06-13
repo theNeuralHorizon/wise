@@ -55,6 +55,23 @@ export const SplitSummary: React.FC<Props> = ({
     setQrModalOpen(true);
   };
 
+  const handleShare = async () => {
+    const link = backendOnline && activeGuestToken
+      ? guestShareLink(activeGuestToken)
+      : 'wise.app/s/demo-link';
+    const hostName = people[0]?.name || 'Someone';
+    const restaurant = activeSplitName || 'a meal';
+    const message = `${hostName} added you to a split at ${restaurant}. Tap to see your items and pay: ${link}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Wise — Split Bill', text: message });
+      } catch { /* user cancelled or not supported */ }
+    } else {
+      navigator.clipboard.writeText(message).catch(() => {});
+      showToast('Share message copied to clipboard');
+    }
+  };
+
   const handleCopyLink = () => {
     const link = backendOnline && activeGuestToken
       ? guestShareLink(activeGuestToken)
@@ -108,7 +125,7 @@ export const SplitSummary: React.FC<Props> = ({
           <span className="share-link-copy">Copy</span>
         </div>
         <div className="share-btn-row">
-          <button className="btn btn-secondary share-btn" onClick={() => showToast('Shared to WhatsApp')}>WhatsApp</button>
+          <button className="btn btn-primary share-btn" onClick={handleShare}>Share</button>
           <button className="btn btn-secondary share-btn" onClick={handleCopyLink}>Copy Link</button>
           <button className="btn btn-secondary share-btn share-btn-qr" onClick={() => {
             const host = people[0];

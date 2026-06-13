@@ -222,9 +222,10 @@ pub async fn create_split(
         .ok()
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| format!("http://127.0.0.1:{}", port));
-    let frontend_base_url = std::env::var("FRONTEND_BASE_URL")
+    let frontend_base_url = std::env::var("PUBLIC_URL")
         .ok()
         .filter(|s| !s.is_empty())
+        .or_else(|| std::env::var("FRONTEND_BASE_URL").ok().filter(|s| !s.is_empty()))
         .unwrap_or_else(|| api_base_url.clone());
     let ws_url = api_base_url
         .replace("http://", "ws://")
@@ -614,9 +615,10 @@ pub async fn get_summary(
         .ok()
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| format!("http://127.0.0.1:{}", port));
-    let frontend_base_url = std::env::var("FRONTEND_BASE_URL")
+    let frontend_base_url = std::env::var("PUBLIC_URL")
         .ok()
         .filter(|s| !s.is_empty())
+        .or_else(|| std::env::var("FRONTEND_BASE_URL").ok().filter(|s| !s.is_empty()))
         .unwrap_or(base_url);
 
     Ok(Json(SplitSummaryResponse {

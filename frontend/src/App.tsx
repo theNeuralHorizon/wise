@@ -13,6 +13,7 @@ import { ProcessingScreen } from './components/ProcessingScreen';
 import { TaxTipModal } from './components/TaxTipModal';
 import { HomeScreen } from './components/HomeScreen';
 import { GuestWrapper } from './components/GuestWrapper';
+import { OnboardingScreen } from './components/OnboardingScreen';
 import { cacheSplitData, getCachedSplitData } from './offline/cache';
 import { addPendingOp } from './offline/pendingOps';
 import { useOffline } from './offline/useOffline';
@@ -27,6 +28,7 @@ function AppContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const api = useApi();
+  const [hasLaunched, setHasLaunched] = useState(() => localStorage.getItem('wise_hasLaunched') === '1');
   const [backendOnline, setBackendOnline] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -425,6 +427,18 @@ function AppContent() {
       try { await api.confirmPayment(activeSplitId, paymentId, activeGuestToken); showToast('Payment confirmed!'); } catch { showToast('Failed to confirm payment'); }
     }
   }, [activeGuestToken, activeSplitId, api, showToast]);
+  if (!hasLaunched) {
+    return (
+      <div className="shell">
+        <div className="phone" id="phone">
+          <div className="island" />
+          <OnboardingScreen onDone={() => { localStorage.setItem('wise_hasLaunched', '1'); setHasLaunched(true); }} />
+          <Toast message={toastMsg} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="shell">
       <div className="phone" id="phone">
