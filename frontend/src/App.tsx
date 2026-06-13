@@ -192,7 +192,7 @@ function AppContent() {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'receipt_parsed') {
-            showToast('AI parsed receipt items! ✨');
+            showToast('AI parsed receipt items!');
             if (data.restaurant) setActiveSplitName(data.restaurant);
             await syncSplitDetails(splitId);
             navigate(`/split/${splitId}/assign`);
@@ -215,13 +215,13 @@ function AppContent() {
             if (data.restaurant) setActiveSplitName(data.restaurant);
             await syncSplitDetails(splitId);
           } else if (data.type === 'guest_paying') {
-            showToast(`💸 ${data.guest_name} paid ₹${(data.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`);
+            showToast(`${data.guest_name} paid ₹${(data.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`);
             try {
               const pmts = await api.getPayments(splitId);
               setPayments(pmts);
             } catch { /* ignore */ }
           } else if (data.type === 'payment_confirmed') {
-            showToast('✅ Payment confirmed!');
+            showToast('Payment confirmed!');
             try {
               const pmts = await api.getPayments(splitId);
               setPayments(pmts);
@@ -255,9 +255,9 @@ function AppContent() {
     navigate(`/split/${activeSplitId || 'demo'}/processing`);
     const mockItems = ((): { name: string; price: number; emoji: string }[] => {
       const rest = (activeSplitName || '').toLowerCase();
-      if (rest.includes('pizza')) return [{ name: 'Pepperoni Pizza', price: 90000, emoji: '🍕' }, { name: 'Garlic Bread', price: 30000, emoji: '🥖' }, { name: 'Salad', price: 45000, emoji: '🥗' }, { name: 'Cola', price: 20000, emoji: '🥤' }];
-      if (rest.includes('coffee') || rest.includes('cafe')) return [{ name: 'Latte', price: 28000, emoji: '☕' }, { name: 'Croissant', price: 18000, emoji: '🥐' }, { name: 'Avocado Toast', price: 42000, emoji: '🥑' }];
-      return [{ name: 'Chef Special', price: 140000, emoji: '🍲' }, { name: 'Appetizer', price: 80000, emoji: '🍟' }, { name: 'Salad', price: 40000, emoji: '🥗' }, { name: 'Wine', price: 65000, emoji: '🍷' }, { name: 'Soda', price: 15000, emoji: '🥤' }];
+      if (rest.includes('pizza')) return [{ name: 'Pepperoni Pizza', price: 90000, emoji: '' }, { name: 'Garlic Bread', price: 30000, emoji: '' }, { name: 'Salad', price: 45000, emoji: '' }, { name: 'Cola', price: 20000, emoji: '' }];
+      if (rest.includes('coffee') || rest.includes('cafe')) return [{ name: 'Latte', price: 28000, emoji: '' }, { name: 'Croissant', price: 18000, emoji: '' }, { name: 'Avocado Toast', price: 42000, emoji: '' }];
+      return [{ name: 'Chef Special', price: 140000, emoji: '' }, { name: 'Appetizer', price: 80000, emoji: '' }, { name: 'Salad', price: 40000, emoji: '' }, { name: 'Wine', price: 65000, emoji: '' }, { name: 'Soda', price: 15000, emoji: '' }];
     })();
     setTaxRate(0.08); setTipRate(0.10);
     const mapped = mockItems.map((item, idx) => ({ id: 'mock_' + idx, ...item, qty: 1 }));
@@ -273,7 +273,7 @@ function AppContent() {
     const hostName = (localStorage.getItem('wise_host_name') || 'You').trim();
     const hostUpi = (localStorage.getItem('wise_host_upi') || '').trim();
     const restName = activeSplitName || 'Custom Split';
-    const initialPeople: Person[] = [{ id: 0, name: hostName, emoji: '😎', color: colors[0], upi: hostUpi || null }];
+    const initialPeople: Person[] = [{ id: 0, name: hostName, emoji: '', color: colors[0], upi: hostUpi || null }];
     setPeople(initialPeople); setActiveSplitName(restName); setItems([]); setAssignments({}); setSelectedPerson(0);
     if (backendOnline) {
       try {
@@ -326,15 +326,13 @@ function AppContent() {
     }
   }, [selectedPerson, backendOnline, activeSplitId, activeOwnerToken, people, api, isOffline, setPendingCount]);
   const handleAddItem = useCallback(async (name: string, price: number) => {
-    const emojis = ['🍔', '🍕', '🥗', '🍲', '☕', '🍰', '🥤', '🍟', '🍜', '🍝'];
-    const emoji = emojis[Math.floor(Math.random() * emojis.length)];
     const itemId = 'item_' + Date.now();
-    setItems(prev => [...prev, { id: itemId, name, price: price * 100, qty: 1, emoji }]);
+    setItems(prev => [...prev, { id: itemId, name, price: price * 100, qty: 1, emoji: '' }]);
     setAssignments(prev => ({ ...prev, [itemId]: [0] }));
-    showToast(`Added ${name} ✓`);
+    showToast(`Added ${name}`);
     if (backendOnline && activeSplitId && activeOwnerToken) {
       try {
-        const data = await api.addItem(activeSplitId, activeOwnerToken, { name, price: price * 100, quantity: 1, emoji });
+        const data = await api.addItem(activeSplitId, activeOwnerToken, { name, price: price * 100, quantity: 1, emoji: '' });
         setItems(prev => prev.map(it => it.id === itemId ? { ...it, id: data.item_id } : it));
         setAssignments(prev => { const next = { ...prev }; next[data.item_id] = [0]; delete next[itemId]; return next; });
         if (people[0]?.apiId) await api.assignItem(activeSplitId, data.item_id, activeOwnerToken, [people[0].apiId]);
@@ -343,7 +341,7 @@ function AppContent() {
   }, [backendOnline, activeSplitId, activeOwnerToken, people, api, showToast]);
   const handleEditItem = useCallback(async (itemId: string, name: string, price: number) => {
     setItems(prev => prev.map(it => it.id === itemId ? { ...it, name, price: price * 100 } : it));
-    showToast('Item updated ✓');
+    showToast('Item updated');
     if (backendOnline && activeSplitId && activeOwnerToken) {
       try { await api.editItem(activeSplitId, itemId, activeOwnerToken, { name, price: price * 100 }); } catch {
         if (isOffline) {
@@ -360,7 +358,7 @@ function AppContent() {
     const item = items.find(it => it.id === itemId);
     setItems(prev => prev.filter(it => it.id !== itemId));
     setAssignments(prev => { const next = { ...prev }; delete next[itemId]; return next; });
-    if (item) showToast(`Deleted ${item.name} ✓`);
+    if (item) showToast(`Deleted ${item.name}`);
     if (backendOnline && activeSplitId && activeOwnerToken) {
       try { await api.deleteItem(activeSplitId, itemId, activeOwnerToken); } catch { /* ignore */ }
     }
@@ -368,7 +366,7 @@ function AppContent() {
   const handleEditRestaurant = useCallback(async (newName: string) => {
     if (!newName.trim()) return;
     setActiveSplitName(newName.trim());
-    showToast(`Title updated to ${newName.trim()} ✓`);
+    showToast(`Title updated to ${newName.trim()}`);
     if (backendOnline && activeSplitId && activeOwnerToken) {
       try { await api.updateSplit(activeSplitId, activeOwnerToken, { restaurant: newName.trim() }); } catch { /* ignore */ }
     }
@@ -377,7 +375,7 @@ function AppContent() {
     if (!isNaN(tax)) setTaxRate(tax);
     if (!isNaN(tip)) setTipRate(tip);
     setTaxTipModalOpen(false);
-    showToast('Tax & tip updated ✓');
+    showToast('Tax & tip updated');
     if (backendOnline && activeSplitId && activeOwnerToken) {
       try { await api.updateSplit(activeSplitId, activeOwnerToken, { restaurant: activeSplitName, tax: Math.round(billSubtotal * tax), tip: Math.round(billSubtotal * tip) }); } catch { /* ignore */ }
     }
@@ -387,7 +385,7 @@ function AppContent() {
     const host = people[0]; const hostUpiId = host?.upi || '';
     if (hostUpiId) {
       openUpiDeeplink(`upi://pay?pa=${encodeURIComponent(hostUpiId)}&pn=${encodeURIComponent(host.name)}&am=${(amount / 100).toFixed(2)}&tn=${encodeURIComponent(activeSplitName)}&cu=INR`);
-      showToast(`Opening UPI for ${person.name} 📱`);
+      showToast(`Opening UPI for ${person.name}`);
     } else showToast('No UPI ID set for host');
   }, [people, activeSplitName, showToast]);
   const fetchSettlements = useCallback(async () => {
@@ -419,12 +417,12 @@ function AppContent() {
     if (activeSplitId) {
       localStorage.setItem(`wise_owner_${activeSplitId}`, JSON.stringify({ token, created_at: new Date().toISOString() }));
     }
-    showToast('Owner token restored ✓');
+    showToast('Owner token restored');
   }, [activeSplitId, showToast]);
   const handleBack = useCallback(() => navigate(-1), [navigate]);
   const handleConfirmPayment = useCallback(async (paymentId: string) => {
     if (activeGuestToken && activeSplitId) {
-      try { await api.confirmPayment(activeSplitId, paymentId, activeGuestToken); showToast('Payment confirmed! ✅'); } catch { showToast('Failed to confirm payment'); }
+      try { await api.confirmPayment(activeSplitId, paymentId, activeGuestToken); showToast('Payment confirmed!'); } catch { showToast('Failed to confirm payment'); }
     }
   }, [activeGuestToken, activeSplitId, api, showToast]);
   return (
@@ -438,12 +436,12 @@ function AppContent() {
               <span className={`ws-badge-dot ${wsStatus}`} />
             </div>
             <svg width="25" height="12" viewBox="0 0 25 12" fill="white"><rect x="0" y="1" width="22" height="10" rx="3" stroke="white" strokeWidth="1" fill="none" opacity=".35" /><rect x="23" y="4" width="2" height="4" rx="1" opacity=".35" /><rect x="1" y="2" width="18" height="8" rx="2" fill="white" /></svg>
-            <button 
-              className="theme-toggle" 
+            <button
+              className="theme-toggle"
               onClick={() => setIsDark(prev => !prev)}
               aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             >
-              {isDark ? '☀️' : '🌙'}
+              {isDark ? '☀' : '☾'}
             </button>
           </div>
         </div>
@@ -453,7 +451,6 @@ function AppContent() {
         </div>
         {(isOffline || isUsingCache) && (
           <div className="offline-banner" role="alert">
-            <span className="offline-banner-icon">📡</span>
             Offline — showing cached data{pendingCount > 0 ? ` (${pendingCount} pending)` : ''}
           </div>
         )}
@@ -477,7 +474,6 @@ function AppContent() {
             <div className="token-reveal-sheet">
               <div className="modal-handle" />
               <div className="token-reveal-body">
-                <div className="token-reveal-icon">🔐</div>
                 <div className="token-reveal-title">Split Created!</div>
                 <div className="token-reveal-desc">Save this owner token to manage your split. It won't be shown again.</div>
 
@@ -487,8 +483,8 @@ function AppContent() {
 
                 <button className="btn btn-primary token-reveal-copy-btn" onClick={() => {
                   navigator.clipboard.writeText(tokenRevealData.token).catch(() => {});
-                  showToast('Owner token copied! 📋');
-                }}>📋 Copy Owner Token</button>
+                  showToast('Owner token copied!');
+                }}>Copy Owner Token</button>
 
                 <div className="token-reveal-link-hint">Or share this link (encodes token in URL):</div>
 
@@ -498,14 +494,14 @@ function AppContent() {
                   </span>
                   <button className="token-reveal-link-copy" onClick={() => {
                     navigator.clipboard.writeText(`${tokenRevealData.guestLink}#owner=${tokenRevealData.token}`).catch(() => {});
-                    showToast('Link with token copied! 📋');
+                    showToast('Link with token copied!');
                   }}>Copy Link</button>
                 </div>
 
                 <button className="btn btn-green token-reveal-continue-btn" onClick={() => {
                   setTokenRevealShown(false);
                   navigate(`/split/${tokenRevealData.splitId}/receipt`);
-                }}>Continue to Upload →</button>
+                }}>Continue to Upload</button>
               </div>
             </div>
           </div>

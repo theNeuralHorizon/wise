@@ -31,35 +31,34 @@ export const ProcessingScreen: React.FC<Props> = ({ step, foundItemsCount, total
       <div className="proc-content">
         <div className="ai-ring">
           <svg width="120" height="120" viewBox="0 0 120 120">
-            <defs><linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#7C6FFF" /><stop offset="100%" stopColor="#22D3A3" /></linearGradient></defs>
-            <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(124,111,255,0.15)" strokeWidth="3" />
-            <circle cx="60" cy="60" r="52" fill="none" stroke="url(#ringGrad)" strokeWidth="3" strokeLinecap="round" strokeDasharray="80 246" />
+            <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(200,241,53,0.12)" strokeWidth="3" />
+            <circle cx="60" cy="60" r="52" fill="none" stroke="#C8F135" strokeWidth="3" strokeLinecap="round" strokeDasharray="80 246" />
           </svg>
-          <div className="ai-ring-inner">✨</div>
+          <div className="ai-ring-inner">→</div>
         </div>
         <div className="proc-title">Reading your receipt</div>
-        <div className="proc-sub">Gemini Vision is parsing the bill…</div>
+        <div className="proc-sub">Gemini Vision is parsing the bill...</div>
 
         <div className="card proc-steps proc-steps-card">
           <div className="proc-step">
-            <div className="proc-step-icon done">✅</div>
+            <div className="proc-step-icon done">✓</div>
             <div className="proc-step-label">Image uploaded <span>· 1.2MB</span></div>
             <div className="proc-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" /></svg></div>
           </div>
           <div className="proc-step">
-            <div className={`proc-step-icon ${step >= 2 ? 'done' : 'active'}`}>{step >= 2 ? '✅' : '🔍'}</div>
-            <div className="proc-step-label">{step >= 2 ? `Found ${foundItemsCount || totalItems} items ✓` : 'Reading line items'}</div>
+            <div className={`proc-step-icon ${step >= 2 ? 'done' : 'active'}`}>{step >= 2 ? '✓' : '...'}</div>
+            <div className="proc-step-label">{step >= 2 ? `Found ${foundItemsCount || totalItems} items` : 'Reading line items'}</div>
             {step < 2 ? <div className="proc-spinner" /> : <div className="proc-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" /></svg></div>}
           </div>
           <div className="proc-step">
-            <div className={`proc-step-icon ${step >= 3 ? 'done' : step === 2 ? 'active' : 'pending'}`}>{step >= 3 ? '✅' : '💰'}</div>
-            <div className="proc-step-label">{step >= 3 ? 'Tax & tip detected ✓' : 'Calculating totals'}</div>
+            <div className={`proc-step-icon ${step >= 3 ? 'done' : step === 2 ? 'active' : 'pending'}`}>{step >= 3 ? '✓' : '...'}</div>
+            <div className="proc-step-label">{step >= 3 ? 'Tax & tip detected' : 'Calculating totals'}</div>
             {step === 2 && <div className="proc-spinner" />}
             {step >= 3 && <div className="proc-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" /></svg></div>}
           </div>
           <div className="proc-step">
-            <div className={`proc-step-icon ${step >= 4 ? 'done' : step === 3 ? 'active' : 'pending'}`}>{step >= 4 ? '✅' : '👥'}</div>
-            <div className="proc-step-label">{step >= 4 ? 'Ready to split ✓' : 'Building split view'}</div>
+            <div className={`proc-step-icon ${step >= 4 ? 'done' : step === 3 ? 'active' : 'pending'}`}>{step >= 4 ? '✓' : '...'}</div>
+            <div className="proc-step-label">{step >= 4 ? 'Ready to split' : 'Building split view'}</div>
             {step === 3 && <div className="proc-spinner" />}
             {step >= 4 && <div className="proc-check"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" /></svg></div>}
           </div>

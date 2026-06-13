@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import type { Item, Person } from '../schemas';
-import { ConfettiOverlay } from './ConfettiOverlay';
 
 interface Props {
   items: Item[];
@@ -17,7 +16,6 @@ export const GuestView: React.FC<Props> = ({ items, people, activeSplitName, tax
   const [showPayment, setShowPayment] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [confettiActive, setConfettiActive] = useState(false);
 
   const toggleItem = (itemId: string) => {
     setSelectedItems(prev => {
@@ -49,8 +47,6 @@ export const GuestView: React.FC<Props> = ({ items, people, activeSplitName, tax
     setTimeout(() => {
       setPaymentProcessing(false);
       setPaymentSuccess(true);
-      setConfettiActive(true);
-      setTimeout(() => setConfettiActive(false), 4000);
     }, 1200);
   };
 
@@ -71,7 +67,7 @@ export const GuestView: React.FC<Props> = ({ items, people, activeSplitName, tax
           </div>
           <div className="pay-methods">
             <div className="pay-method selected">
-              <div className="pay-method-icon">🇮🇳</div>
+              <div className="pay-method-icon">₹</div>
               <div className="pay-method-info">
                 <div className="pay-method-name">UPI</div>
                 <div className="pay-method-sub">GPay · PhonePe · BHIM · Any UPI app</div>
@@ -80,14 +76,13 @@ export const GuestView: React.FC<Props> = ({ items, people, activeSplitName, tax
             </div>
           </div>
           <button className={`btn btn-green ${paymentProcessing ? 'btn-disabled' : ''}`} onClick={handleDoPayment} disabled={paymentProcessing}>
-            {paymentProcessing ? '⏳ Processing…' : '💸   Pay Now'}
+            {paymentProcessing ? 'Processing...' : 'Pay Now'}
           </button>
         </div>
 
         <div className={`pay-success-overlay ${paymentSuccess ? 'show' : ''}`}>
-          <ConfettiOverlay active={confettiActive} />
-          <div className="pay-success-icon">✅</div>
-          <div className="pay-success-title">Paid! 🎉</div>
+          <div className="pay-success-icon">✓</div>
+          <div className="pay-success-title">Paid!</div>
           <div className="pay-success-sub">
             Payment sent to {people[0]?.name || 'Host'}.<br />Your friends can see this too.
           </div>
@@ -100,13 +95,12 @@ export const GuestView: React.FC<Props> = ({ items, people, activeSplitName, tax
   return (
     <div className="screen active" id="guest">
       <div className="guest-hero">
-        <div className="guest-badge">🔗 Guest View · No app needed</div>
+        <div className="guest-badge">Guest View · No app needed</div>
         <div className="guest-title">Select your items</div>
         <div className="guest-sub">From <strong>{activeSplitName || 'Demo Split'}</strong></div>
       </div>
       <div className="guest-items">
         <div className="guest-host-note">
-          <span>ℹ️</span>
           <span><strong>{people[0]?.name || 'Host'}</strong> fronted the bill. Select what you ordered and pay your share instantly.</span>
         </div>
         <div id="guest-items-list">
@@ -115,7 +109,7 @@ export const GuestView: React.FC<Props> = ({ items, people, activeSplitName, tax
             return (
               <div key={item.id} className="guest-item" onClick={() => toggleItem(item.id)}>
                 <div className={`guest-item-sel ${isSel ? 'on' : ''}`}>{isSel && '✓'}</div>
-                <div className="guest-item-name">{item.emoji} {item.name}</div>
+                <div className="guest-item-name">{item.name}</div>
                 <div className="guest-item-price">₹{(item.price / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               </div>
             );
@@ -128,7 +122,7 @@ export const GuestView: React.FC<Props> = ({ items, people, activeSplitName, tax
           <span className="guest-total-amount" id="guest-total">₹{(guestTotal / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
         <button className="btn btn-green" id="guest-pay-btn" onClick={handleGoToPayment}>
-          💸 &nbsp; Pay {people[0]?.name || 'Host'}
+          Pay {people[0]?.name || 'Host'}
         </button>
       </div>
     </div>

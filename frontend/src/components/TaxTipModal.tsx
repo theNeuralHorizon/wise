@@ -23,7 +23,7 @@ export const TaxTipModal: React.FC<Props> = ({ open, taxRate, tipRate, onClose, 
     <div className={`modal-backdrop ${open ? 'open' : ''}`} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-sheet">
         <div className="modal-handle" />
-        <div className="modal-title">✏️ Edit Tax & Tip</div>
+        <div className="modal-title">Edit Tax & Tip</div>
         <div className="modal-sub">Adjust percentages — all amounts update instantly</div>
         <div className="modal-field">
           <div className="modal-label">Tax Rate</div>

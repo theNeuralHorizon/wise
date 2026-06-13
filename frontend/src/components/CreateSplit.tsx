@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import type { FriendInput } from '../schemas';
 
 const colors = [
-  'rgba(124,111,255,0.18)', 'rgba(255,170,80,0.18)', 'rgba(96,165,250,0.18)',
-  'rgba(248,113,113,0.18)', 'rgba(34,211,163,0.18)', 'rgba(245,158,11,0.18)',
+  'rgba(200,241,53,0.12)', 'rgba(200,241,53,0.18)', 'rgba(200,241,53,0.24)',
+  'rgba(200,241,53,0.08)', 'rgba(200,241,53,0.15)', 'rgba(200,241,53,0.20)',
 ];
 
 interface Props {
@@ -16,14 +16,13 @@ export const CreateSplit: React.FC<Props> = ({ onConfirm, onBack }) => {
   const [hostUpi, setHostUpi] = useState<string>(() => localStorage.getItem('wise_host_upi') || '');
   const [restaurantName, setRestaurantName] = useState('');
   const [friends, setFriends] = useState<FriendInput[]>([
-    { name: 'Loren', emoji: '🧑', upi: 'loren@ybl' },
-    { name: 'Anthony', emoji: '👦', upi: 'anthony@okicici' },
-    { name: 'Sara', emoji: '👩', upi: 'sara@paytm' },
+    { name: 'Loren', emoji: '', upi: 'loren@ybl' },
+    { name: 'Anthony', emoji: '', upi: 'anthony@okicici' },
+    { name: 'Sara', emoji: '', upi: 'sara@paytm' },
   ]);
 
   const addFriend = () => {
-    const emojis = ['🧑', '👦', '👩', '👨', '👧', '👵', '👴', '🦊', '🦁', '🐼'];
-    setFriends(prev => [...prev, { name: `Friend ${prev.length + 1}`, emoji: emojis[prev.length % emojis.length], upi: '' }]);
+    setFriends(prev => [...prev, { name: `Friend ${prev.length + 1}`, emoji: '', upi: '' }]);
   };
 
   const removeFriend = (idx: number) => setFriends(prev => prev.filter((_, i) => i !== idx));
@@ -70,7 +69,6 @@ export const CreateSplit: React.FC<Props> = ({ onConfirm, onBack }) => {
             {friends.map((f, idx) => (
               <div key={idx} className="form-row setup-friend-row">
                 <input type="text" value={f.name} onChange={e => updateFriend(idx, 'name', e.target.value)} placeholder="Name" className="form-input form-input-name" />
-                <input type="text" value={f.emoji} onChange={e => updateFriend(idx, 'emoji', e.target.value)} placeholder="Emoji" className="form-input form-input-emoji" />
                 <input type="text" value={f.upi} onChange={e => updateFriend(idx, 'upi', e.target.value)} placeholder="UPI ID" className="form-input form-input-upi" />
                 <button className="setup-friend-remove" onClick={() => removeFriend(idx)}>×</button>
               </div>
@@ -78,8 +76,8 @@ export const CreateSplit: React.FC<Props> = ({ onConfirm, onBack }) => {
           </div>
         </div>
 
-        <button className="btn btn-primary" onClick={() => handleConfirm('scan')}>📷 Upload or Scan Receipt</button>
-        <button className="btn btn-secondary" onClick={() => handleConfirm('manual')}>✏️ Manual Entry (Skip Scan)</button>
+        <button className="btn btn-primary" onClick={() => handleConfirm('scan')}>Upload or Scan Receipt</button>
+        <button className="btn btn-secondary" onClick={() => handleConfirm('manual')}>Manual Entry (Skip Scan)</button>
       </div>
     </div>
   );

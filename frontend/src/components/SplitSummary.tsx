@@ -60,20 +60,20 @@ export const SplitSummary: React.FC<Props> = ({
       ? guestShareLink(activeGuestToken)
       : 'wise.app/s/demo-link';
     navigator.clipboard.writeText(link).catch(() => {});
-    showToast('Link copied to clipboard! 📋');
+    showToast('Link copied to clipboard');
   };
 
   return (
     <div className="screen active" id="summary">
       {!hasOwnerToken && backendOnline && (
         <div className="recovery-bar">
-          <div className="recovery-bar-title">⚠️ No Owner Token</div>
+          <div className="recovery-bar-title">No Owner Token</div>
           <div className="recovery-bar-sub">Enter your owner token to manage this split.</div>
           <div className="form-row">
             <input
               type="text"
               className="recovery-input"
-              placeholder="Paste owner token…"
+              placeholder="Paste owner token..."
               value={recoveryToken}
               onChange={e => setRecoveryToken(e.target.value)}
             />
@@ -91,25 +91,24 @@ export const SplitSummary: React.FC<Props> = ({
             <svg width="18" height="18" viewBox="0 0 18 18"><path d="M11 4L6 9L11 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </button>
           <div className="header-title">Split Summary</div>
-          <button className="btn header-save-btn" onClick={() => showToast('Receipt saved 📁')}>Save</button>
+          <button className="btn header-save-btn" onClick={() => showToast('Receipt saved')}>Save</button>
         </div>
       </div>
 
       <div className="summary-hero">
-        <div className="summary-icon">🍽️</div>
         <div className="summary-title">{activeSplitName}</div>
         <div className="summary-sub">Today · {people.length} people · {people[0]?.name || 'You'} paid</div>
       </div>
 
       <div className="share-card">
-        <div className="share-card-title">🔗 Share with your friends</div>
+        <div className="share-card-title">Share with your friends</div>
         <div className="share-card-sub">They open the link — no app needed</div>
         <div className="share-link-box" onClick={handleCopyLink}>
           <span>{backendOnline && activeGuestToken ? guestShareLink(activeGuestToken) : 'wise.app/s/demo-link'}</span>
           <span className="share-link-copy">Copy</span>
         </div>
         <div className="share-btn-row">
-          <button className="btn btn-secondary share-btn" onClick={() => showToast('Shared to WhatsApp! 🟢')}>WhatsApp</button>
+          <button className="btn btn-secondary share-btn" onClick={() => showToast('Shared to WhatsApp')}>WhatsApp</button>
           <button className="btn btn-secondary share-btn" onClick={handleCopyLink}>Copy Link</button>
           <button className="btn btn-secondary share-btn share-btn-qr" onClick={() => {
             const host = people[0];
@@ -124,7 +123,7 @@ export const SplitSummary: React.FC<Props> = ({
           <div className="card payments-card">
             {payments.map(p => (
               <div key={p.id} className="payment-item">
-                <span className="payment-emoji">{p.from_emoji}</span>
+                <span className="payment-emoji">{p.from_name.charAt(0)}</span>
                 <div className="payment-info">
                   <div className="payment-name">{p.from_name}</div>
                   <div className="payment-time">{new Date(p.created_at).toLocaleTimeString()}</div>
@@ -132,7 +131,7 @@ export const SplitSummary: React.FC<Props> = ({
                 <div className="payment-amount">₹{(p.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
                 {p.status === 'confirmed' ? (
                   <span className="payment-confirmed">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5.5" stroke="#22D3A3" /><path d="M3.5 6L5.5 8L8.5 4.5" stroke="#22D3A3" strokeWidth="1.2" strokeLinecap="round" /></svg>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="5.5" stroke="#C8F135" /><path d="M3.5 6L5.5 8L8.5 4.5" stroke="#C8F135" strokeWidth="1.2" strokeLinecap="round" /></svg>
                     Confirmed
                   </span>
                 ) : (
@@ -160,7 +159,7 @@ export const SplitSummary: React.FC<Props> = ({
           return (
             <div key={person.id} className="person-card" id={`person-card-${person.id}`}>
               <div className="person-card-header">
-                <div className="person-card-ava">{person.emoji}</div>
+                <div className="person-card-ava">{person.name.charAt(0)}</div>
                 <div className="person-card-info">
                   <div className="person-card-name">{person.name}</div>
                   <div className="person-card-items">{itemNamesStr || 'No items'}</div>
@@ -178,8 +177,8 @@ export const SplitSummary: React.FC<Props> = ({
                   <button className="pay-btn paid">✓ You paid the bill</button>
                 ) : (
                   <>
-                    <button className="pay-btn upi" onClick={() => onTriggerUPI(person.id, total)}>🇮🇳 Pay via UPI</button>
-                    <button className="pay-btn link" onClick={() => handleShowQR(person.id, total)}>📱 QR</button>
+                    <button className="pay-btn upi" onClick={() => onTriggerUPI(person.id, total)}>Pay via UPI</button>
+                    <button className="pay-btn link" onClick={() => handleShowQR(person.id, total)}>QR</button>
                   </>
                 )}
               </div>
@@ -191,9 +190,9 @@ export const SplitSummary: React.FC<Props> = ({
       {backendOnline && (
         <div className="settle-section">
           <div className="settle-header">
-            <div className="settle-title">⚡ Settle All</div>
+            <div className="settle-title">Settle All</div>
             <button className="settle-badge" onClick={onFetchSettlements}>
-              {settlementsLoading ? 'Computing…' : 'Minimize Transactions'}
+              {settlementsLoading ? 'Computing...' : 'Minimize Transactions'}
             </button>
           </div>
           {!settlements && !settlementsLoading && (
@@ -202,20 +201,20 @@ export const SplitSummary: React.FC<Props> = ({
             </div>
           )}
           {settlementsLoading && (
-            <div className="settle-card"><div className="settle-loading"><div className="settle-spinner" />Computing optimal settlements…</div></div>
+            <div className="settle-card"><div className="settle-loading"><div className="settle-spinner" />Computing optimal settlements...</div></div>
           )}
           {settlements && !settlementsLoading && (
             settlements.length === 0 ? (
               <div className="settle-card settle-card-all-settled">
-                ✅ All settled! No payments needed.
+                All settled! No payments needed.
               </div>
             ) : (
               <div className="settle-card">
                 {settlements.map((txn, i) => (
                   <div key={i} className="settle-txn" onClick={() => { if (txn.upi_deeplink) openUpiDeeplink(txn.upi_deeplink); else showToast(`No UPI ID for ${txn.to_name}`); }}>
-                    <span className="settle-txn-emoji">{txn.from_emoji}</span>
+                    <span className="settle-txn-emoji">{txn.from_name.charAt(0)}</span>
                     <div className="settle-txn-arrows">→</div>
-                    <span className="settle-txn-emoji">{txn.to_emoji}</span>
+                    <span className="settle-txn-emoji">{txn.to_name.charAt(0)}</span>
                     <div className="settle-txn-info">
                       <div className="settle-txn-desc">{txn.from_name} pays {txn.to_name}</div>
                       <div className="settle-txn-sub">{txn.to_upi || 'No UPI ID'}</div>
@@ -235,14 +234,14 @@ export const SplitSummary: React.FC<Props> = ({
         <div className="stc-row">
           <span className="stc-label stc-label-edit">
             Tax ({Math.round(taxRate * 100)}%)
-            <button className="stc-edit-btn" onClick={onEditTaxTip} aria-label="Edit tax and tip">✏️</button>
+            <button className="stc-edit-btn" onClick={onEditTaxTip} aria-label="Edit tax and tip">✎</button>
           </span>
           <span className="stc-val">₹{((billSubtotal * taxRate) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
         <div className="stc-row">
           <span className="stc-label stc-label-edit">
             Tip ({Math.round(tipRate * 100)}%)
-            <button className="stc-edit-btn" onClick={onEditTaxTip} aria-label="Edit tax and tip">✏️</button>
+            <button className="stc-edit-btn" onClick={onEditTaxTip} aria-label="Edit tax and tip">✎</button>
           </span>
           <span className="stc-val">₹{((billSubtotal * tipRate) / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
@@ -259,7 +258,7 @@ export const SplitSummary: React.FC<Props> = ({
           <div className="modal-handle" />
           {qrPerson && (
             <div className="qr-modal-content">
-              <div className="qr-person-info">{qrPerson.emoji} Pay {qrPerson.amount > 0 ? qrPerson.name : people[0]?.name || 'Host'}</div>
+              <div className="qr-person-info">{qrPerson.amount > 0 ? `Pay ${qrPerson.name}` : `${people[0]?.name || 'Host'}`}</div>
               {qrPerson.amount > 0 && <div className="qr-amount-big">₹{(qrPerson.amount / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>}
               <div className="qr-hint">Scan with any UPI app</div>
               <div className="qr-canvas-wrap">
@@ -271,14 +270,14 @@ export const SplitSummary: React.FC<Props> = ({
                 })()} />
               </div>
               {qrPerson.upi && <div className="qr-upi-id">{qrPerson.upi}</div>}
-              {!qrPerson.upi && <div className="qr-hint qr-hint-error">⚠️ No UPI ID set for host</div>}
+              {!qrPerson.upi && <div className="qr-hint qr-hint-error">No UPI ID set for host</div>}
               <button className="btn btn-green qr-pay-btn" onClick={() => {
                 const host = people[0];
                 if (host?.upi) {
                   openUpiDeeplink(`upi://pay?pa=${encodeURIComponent(host.upi)}&pn=${encodeURIComponent(host.name)}&am=${(qrPerson.amount / 100).toFixed(2)}&tn=WiseSplit&cu=INR`);
                 } else showToast('No UPI ID set for host');
                 setQrModalOpen(false);
-              }}>💸 Open UPI App</button>
+              }}>Open UPI App</button>
             </div>
           )}
           <div className="qr-modal-spacer" />

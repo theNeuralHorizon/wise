@@ -88,15 +88,14 @@ export const ItemAssignment: React.FC<Props> = ({
         <div className="items-rest">
           {editingRestaurant ? (
             <div className="edit-row">
-              <span>🍽️</span>
               <input type="text" className="edit-input" value={restaurantInput} onChange={e => setRestaurantInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { onEditRestaurant(restaurantInput.trim()); setEditingRestaurant(false); } }} autoFocus />
               <button className="edit-confirm" onClick={() => { onEditRestaurant(restaurantInput.trim()); setEditingRestaurant(false); }}>✓</button>
               <button className="edit-cancel" onClick={() => setEditingRestaurant(false)}>×</button>
             </div>
           ) : (
             <div className="items-rest-display">
-              <span>🍽️ {activeSplitName || 'Meal Split'}</span>
-              <button className="stc-edit-btn" onClick={() => { setRestaurantInput(activeSplitName); setEditingRestaurant(true); }}>✏️ Edit</button>
+              <span>{activeSplitName || 'Meal Split'}</span>
+              <button className="stc-edit-btn" onClick={() => { setRestaurantInput(activeSplitName); setEditingRestaurant(true); }}>Edit</button>
             </div>
           )}
         </div>
@@ -110,7 +109,7 @@ export const ItemAssignment: React.FC<Props> = ({
 
       {!hasOwnerToken && (
         <div className="recovery-bar">
-          <div className="recovery-bar-title">⚠️ Owner token not found. Enter your token to edit this split.</div>
+          <div className="recovery-bar-title">Owner token not found. Enter your token to edit this split.</div>
           <div className="form-row">
             <input type="text" className="recovery-input" placeholder="Paste owner token..." value={recoveryToken} onChange={e => setRecoveryToken(e.target.value)} />
             <button className="recovery-btn" onClick={() => { if (recoveryToken.trim()) { onRecoverToken(recoveryToken.trim()); setRecoveryToken(''); } }}>Restore</button>
@@ -120,9 +119,9 @@ export const ItemAssignment: React.FC<Props> = ({
 
       <div className="add-item-bar">
         <div className="add-item-row">
-          <input type="text" className="add-item-input add-item-name" placeholder="➕ Add custom item name" value={newItemName} onChange={e => setNewItemName(e.target.value)} />
+          <input type="text" className="add-item-input add-item-name" placeholder="Add custom item name" value={newItemName} onChange={e => setNewItemName(e.target.value)} />
           <input type="number" className="add-item-input add-item-price" placeholder="Price" value={newItemPrice} onChange={e => setNewItemPrice(e.target.value)} />
-          <button className="btn add-item-btn" onClick={handleAdd}>Add</button>
+          <button className="btn add-item-btn" onClick={handleAdd}>+</button>
         </div>
       </div>
 
@@ -133,7 +132,7 @@ export const ItemAssignment: React.FC<Props> = ({
           const avatars = assigned.map(pid => {
             const p = people[pid];
             if (!p) return null;
-            return <div key={pid} className="item-avatar">{p.emoji}</div>;
+            return <div key={pid} className="item-avatar">{p.name.charAt(0)}</div>;
           });
 
           return (
@@ -157,7 +156,7 @@ export const ItemAssignment: React.FC<Props> = ({
               </div>
               <div className="item-actions">
                 <div className="item-price">₹{(item.price / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                <button className="item-action-btn edit" onClick={e => startEdit(item.id, item.name, item.price / 100, e)} aria-label="Edit item">✏️</button>
+                <button className="item-action-btn edit" onClick={e => startEdit(item.id, item.name, item.price / 100, e)} aria-label="Edit item">✎</button>
                 <button className="item-action-btn delete" onClick={e => { e.stopPropagation(); onDeleteItem(item.id); }} aria-label="Delete item">×</button>
               </div>
             </div>
@@ -176,7 +175,7 @@ export const ItemAssignment: React.FC<Props> = ({
             <div className="items-footer-val">₹{(billSubtotal / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           </div>
         </div>
-        <button className="btn btn-primary" onClick={onDone}>✓ &nbsp; Confirm & Share Split</button>
+        <button className="btn btn-primary" onClick={onDone}>Confirm & Share Split</button>
       </div>
     </div>
   );

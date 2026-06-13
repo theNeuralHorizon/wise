@@ -19,7 +19,6 @@ export const HistoryScreen: React.FC<Props> = ({ history, onBack, onLoadSplit })
     <div className="history-list">
       {history.length === 0 ? (
         <div className="history-empty">
-          <div className="history-empty-icon">🍽️</div>
           <div className="history-empty-text">No splits yet.<br/>Start a new split from the home screen!</div>
         </div>
       ) : (
@@ -28,7 +27,7 @@ export const HistoryScreen: React.FC<Props> = ({ history, onBack, onLoadSplit })
           <div className="card card-padded">
             {history.map(s => (
               <div key={s.id} className="split-item" onClick={() => onLoadSplit(s.id)}>
-                <div className="split-avatar purple">🍽️</div>
+                <div className="split-avatar" />
                 <div className="split-info">
                   <div className="split-name">{s.restaurant}</div>
                   <div className="split-date">{s.date} · {s.count} people</div>

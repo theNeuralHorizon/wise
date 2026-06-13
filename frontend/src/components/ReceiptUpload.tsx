@@ -41,11 +41,11 @@ export const ReceiptUpload: React.FC<Props> = ({ activeSplitName: _activeSplitNa
       <div className="scan-bottom">
         <div className="scan-hint">Position receipt within frame · AI reads automatically</div>
         <div className="scan-actions">
-          <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>📁</button>
+          <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>Gallery</button>
           <button className="shutter" onClick={() => fileInputRef.current?.click()}>
             <div className="shutter-inner" />
           </button>
-          <button className="btn btn-secondary" onClick={onMockScan}>⚡</button>
+          <button className="btn btn-secondary" onClick={onMockScan}>Demo</button>
         </div>
       </div>
 

@@ -12,7 +12,7 @@ export const ParticipantList: React.FC<Props> = ({ people, selectedPerson, onSel
   <div className="pax-row" id="pax-row">
     {people.map((p, idx) => (
       <div key={idx} className="pax-chip" onClick={() => onSelectPerson(idx)}>
-        <div className={`pax-ava ${selectedPerson === idx ? 'selected' : ''}`} style={{ background: p.color }}>{p.emoji}</div>
+        <div className={`pax-ava ${selectedPerson === idx ? 'selected' : ''}`}>{p.name.charAt(0)}</div>
         <div className="pax-chip-name">{p.name.split(' ')[0]}</div>
       </div>
     ))}
