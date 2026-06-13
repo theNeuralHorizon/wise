@@ -22,19 +22,23 @@ pub async fn verify_owner(db: &D1Database, split_id: &str, owner_token: &str) ->
         .prepare("SELECT owner_token, token_created_at FROM splits WHERE id = ?1")
         .bind(&[split_id.into()])?;
 
-    let row: Option<D1Result> = stmt.first(None).await?;
+    let row: Option<serde_json::Value> = stmt.first(None).await?;
 
     match row {
         Some(row) => {
-            let stored_token: String = row.get("owner_token")?;
-            let created_at: String = row.get("token_created_at")?;
+            let stored_token = row["owner_token"]
+                .as_str()
+                .ok_or_else(|| Error::RustError("Missing owner_token field".into()))?;
+            let created_at = row["token_created_at"]
+                .as_str()
+                .unwrap_or("");
 
             if stored_token != owner_token {
                 return Err(Error::RustError("Invalid owner token".into()));
             }
 
             if !created_at.is_empty() {
-                if let Ok(created) = chrono::DateTime::parse_from_rfc3339(&created_at) {
+                if let Ok(created) = chrono::DateTime::parse_from_rfc3339(created_at) {
                     let age = chrono::Utc::now() - created.with_timezone(&chrono::Utc);
                     if age.num_days() > 7 {
                         return Err(Error::RustError(

@@ -1,3 +1,4 @@
+use wasm_bindgen::JsValue;
 use worker::*;
 
 mod ai;
@@ -9,7 +10,7 @@ mod ws;
 use models::*;
 
 fn cors_response(req: &Request, resp: Response) -> Result<Response> {
-    let mut headers = Headers::new()?;
+    let headers = Headers::new();
     headers.set("Access-Control-Allow-Origin", "*")?;
     headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")?;
     headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")?;
@@ -41,12 +42,12 @@ fn error_response(req: &Request, status: u16, message: &str) -> Result<Response>
     cors_response(req, resp)
 }
 
-#[wasm_bindgen::prelude::wasm_bindgen]
-pub async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
+#[event(fetch)]
+pub async fn main(mut req: Request, env: Env, _ctx: Context) -> Result<Response> {
     // Handle CORS preflight
     if req.method() == Method::Options {
         let mut resp = Response::ok("")?;
-        let mut headers = Headers::new()?;
+        let headers = Headers::new();
         headers.set("Access-Control-Allow-Origin", "*")?;
         headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")?;
         headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")?;
@@ -60,7 +61,6 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
     let method = req.method().clone();
 
     let db = env.d1("DB")?;
-    let fetcher = env.fetcher()?;
     let r2 = env.bucket("RECEIPTS")?;
 
     // ── ROUTING ─────────────────────────────────────────────────────────────
@@ -77,10 +77,10 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         if body.participants.is_empty() {
             return error_response(&req, 400, "At least one participant required");
         }
-        match db::create_split(&db, &body).await {
+        return match db::create_split(&db, &body).await {
             Ok(created) => json_response(&req, &serde_json::to_value(created).unwrap()),
             Err(e) => error_response(&req, 500, &e.to_string()),
-        }
+        };
     }
 
     // GET /api/splits/:id
@@ -88,24 +88,24 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         let rest = path.trim_start_matches("/api/splits/");
         if !rest.contains('/') && !rest.is_empty() {
             let split_id = rest;
-            match db::get_split_detail(&db, split_id).await {
+            return match db::get_split_detail(&db, split_id).await {
                 Ok(detail) => json_response(&req, &serde_json::to_value(detail).unwrap()),
                 Err(e) => error_response(&req, 404, &e.to_string()),
-            }
+            };
         } else if rest.ends_with("/summary") {
             let split_id = rest.trim_end_matches("/summary");
-            match db::get_summary(&db, split_id).await {
+            return match db::get_summary(&db, split_id).await {
                 Ok(summary) => json_response(&req, &serde_json::to_value(summary).unwrap()),
                 Err(e) => error_response(&req, 404, &e.to_string()),
-            }
+            };
         } else if rest.ends_with("/payments") {
             let split_id = rest.trim_end_matches("/payments");
-            match db::get_payments(&db, split_id).await {
+            return match db::get_payments(&db, split_id).await {
                 Ok(payments) => json_response(&req, &payments),
                 Err(e) => error_response(&req, 500, &e.to_string()),
-            }
+            };
         } else {
-            error_response(&req, 404, "Not found")
+            return error_response(&req, 404, "Not found");
         }
     }
 
@@ -125,7 +125,7 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
         let body = req.text().await?;
         let bytes = body.as_bytes();
 
-        let parsed = match ai::parse_receipt(&fetcher, &env, &r2, split_id, bytes).await {
+        let parsed = match ai::parse_receipt(&env, &r2, split_id, bytes).await {
             Ok(p) => p,
             Err(_) => ai::mock_receipt(),
         };
@@ -233,7 +233,7 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             return error_response(&req, 401, &e.to_string());
         }
         let body: AddItemRequest = req.json().await?;
-        match db::add_item(&db, split_id, &body.name, body.price, body.quantity, &body.emoji).await {
+        return match db::add_item(&db, split_id, &body.name, body.price, body.quantity, &body.emoji).await {
             Ok(item_id) => {
                 let _ = broadcast_to_split(&env, split_id, &serde_json::json!({
                     "type": "item_added",
@@ -242,7 +242,7 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
                 json_response(&req, &serde_json::json!({ "status": "ok", "item_id": item_id }))
             }
             Err(e) => error_response(&req, 500, &e.to_string()),
-        }
+        };
     }
 
     // PUT /api/splits/:id/items/:item_id
@@ -327,7 +327,7 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
             Ok(t) => t,
             Err(e) => return error_response(&req, 401, &e.to_string()),
         };
-        match db::confirm_payment(&db, split_id, payment_id, &guest_token).await {
+        return match db::confirm_payment(&db, split_id, payment_id, &guest_token).await {
             Ok(result) => {
                 let _ = broadcast_to_split(&env, split_id, &serde_json::json!({
                     "type": "payment_confirmed", "payment_id": payment_id, "split_id": split_id,
@@ -335,48 +335,46 @@ pub async fn main(req: Request, env: Env, _ctx: Context) -> Result<Response> {
                 json_response(&req, &result)
             }
             Err(e) => error_response(&req, 400, &e.to_string()),
-        }
+        };
     }
 
     // GET /api/guest/:token
     if method == Method::Get && path.starts_with("/api/guest/") && !path.ends_with("/pay") {
         let token = path.trim_start_matches("/api/guest/").trim_end_matches('/');
-        match db::get_guest_view(&db, token).await {
+        return match db::get_guest_view(&db, token).await {
             Ok(view) => json_response(&req, &view),
             Err(e) => error_response(&req, 404, &e.to_string()),
-        }
+        };
     }
 
     // POST /api/guest/:token/pay
     if method == Method::Post && path.starts_with("/api/guest/") && path.ends_with("/pay") {
         let token = path.trim_start_matches("/api/guest/").trim_end_matches("/pay");
         let body: GuestPayRequest = req.json().await?;
-        match db::guest_pay(&db, token, &body).await {
+        return match db::guest_pay(&db, token, &body).await {
             Ok(result) => json_response(&req, &result),
             Err(e) => error_response(&req, 400, &e.to_string()),
-        }
+        };
     }
 
     // GET /api/ws/:split_id — WebSocket
     if method == Method::Get && path.starts_with("/api/ws/") {
         let split_id = path.trim_start_matches("/api/ws/");
-        let do_id = env
-            .durable_object("SPLIT_SOCKET")?
-            .id_from_name(split_id)?;
+        let namespace = env.durable_object("SPLIT_SOCKET")?;
+        let do_id = namespace.id_from_name(split_id)?;
         let stub = do_id.get_stub()?;
-        return stub.fetch_with_request(&req).await;
+        return stub.fetch_with_request(req).await;
     }
 
     error_response(&req, 404, "Not found")
 }
 
 async fn broadcast_to_split(env: &Env, split_id: &str, msg: &str) -> Result<()> {
-    let do_id = env
-        .durable_object("SPLIT_SOCKET")?
-        .id_from_name(split_id)?;
+    let namespace = env.durable_object("SPLIT_SOCKET")?;
+    let do_id = namespace.id_from_name(split_id)?;
     let stub = do_id.get_stub()?;
 
-    let mut headers = Headers::new()?;
+    let headers = Headers::new();
     headers.set("Content-Type", "text/plain")?;
 
     let req = Request::new_with_init(
@@ -384,7 +382,7 @@ async fn broadcast_to_split(env: &Env, split_id: &str, msg: &str) -> Result<()> 
         RequestInit::new()
             .with_method(Method::Post)
             .with_headers(headers)
-            .with_body(Some(JsValue::from(msg.to_string()))),
+            .with_body(Some(JsValue::from_str(msg))),
     )?;
 
     let _ = stub.fetch_with_request(req).await;

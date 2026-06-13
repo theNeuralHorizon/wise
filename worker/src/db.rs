@@ -5,30 +5,29 @@ use crate::models::*;
 pub async fn create_split(db: &D1Database, req: &CreateSplitRequest) -> Result<SplitCreated> {
     let split_id = uuid::Uuid::new_v4().to_string();
     let guest_token: String = {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-        (0..24)
-            .map(|_| rng.sample(rand::distributions::Alphanumeric) as char)
-            .collect::<String>()
-            .to_lowercase()
+        let uuid_bytes = uuid::Uuid::new_v4().as_bytes().to_vec();
+        let mut extra = Vec::new();
+        extra.extend_from_slice(uuid_bytes.as_slice());
+        let uuid2 = uuid::Uuid::new_v4();
+        extra.extend_from_slice(uuid2.as_bytes());
+        extra.truncate(24);
+        hex::encode(extra)
     };
     let owner_token: String = {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-        let bytes: Vec<u8> = (0..32).map(|_| rng.gen()).collect();
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(uuid::Uuid::new_v4().as_bytes());
+        bytes.extend_from_slice(uuid::Uuid::new_v4().as_bytes());
         hex::encode(bytes)
     };
     let created_at = chrono::Utc::now().to_rfc3339();
     let host_name = &req.participants[0].name;
     let restaurant = req.restaurant.as_deref().unwrap_or(&req.name);
 
-    // Insert split
     db.prepare("INSERT INTO splits (id, name, restaurant, created_by, created_at, guest_token, owner_token, token_created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)")
         .bind(&[split_id.clone().into(), req.name.clone().into(), restaurant.into(), host_name.into(), created_at.clone().into(), guest_token.clone().into(), owner_token.clone().into(), created_at.clone().into()])?
         .run()
         .await?;
 
-    // Insert participants
     for p in &req.participants {
         let pid = uuid::Uuid::new_v4().to_string();
         db.prepare("INSERT INTO participants (id, split_id, name, emoji, upi_id, is_guest) VALUES (?1, ?2, ?3, ?4, ?5, 0)")
@@ -64,40 +63,40 @@ pub async fn get_split_detail(db: &D1Database, split_id: &str) -> Result<SplitDe
     let row = db
         .prepare("SELECT id, name, restaurant, created_by, created_at, total_amount, tax, tip, guest_token FROM splits WHERE id = ?1")
         .bind(&[split_id.into()])?
-        .first::<D1Result>(None)
+        .first::<serde_json::Value>(None)
         .await?
         .ok_or_else(|| Error::RustError(format!("Split '{}' not found", split_id)))?;
 
     let split = SplitRow {
-        id: row.get("id")?,
-        name: row.get("name")?,
-        restaurant: row.get("restaurant")?,
-        created_by: row.get("created_by")?,
-        created_at: row.get("created_at")?,
-        total_amount: row.get("total_amount")?,
-        tax: row.get("tax")?,
-        tip: row.get("tip")?,
-        guest_token: row.get("guest_token")?,
+        id: row["id"].as_str().unwrap_or("").to_string(),
+        name: row["name"].as_str().unwrap_or("").to_string(),
+        restaurant: row["restaurant"].as_str().map(|s| s.to_string()),
+        created_by: row["created_by"].as_str().unwrap_or("").to_string(),
+        created_at: row["created_at"].as_str().unwrap_or("").to_string(),
+        total_amount: row["total_amount"].as_i64().unwrap_or(0),
+        tax: row["tax"].as_i64().unwrap_or(0),
+        tip: row["tip"].as_i64().unwrap_or(0),
+        guest_token: row["guest_token"].as_str().unwrap_or("").to_string(),
     };
 
     let participants = {
-        let results = db
+        let results: Vec<serde_json::Value> = db
             .prepare("SELECT id, split_id, name, emoji, upi_id, is_guest FROM participants WHERE split_id = ?1 ORDER BY rowid")
             .bind(&[split_id.into()])?
             .all()
             .await?
-            .results;
+            .results()?;
 
         results
             .into_iter()
             .map(|r| {
-                let is_guest: i64 = r.get("is_guest").unwrap_or(0);
+                let is_guest = r["is_guest"].as_i64().unwrap_or(0);
                 Ok(ParticipantRow {
-                    id: r.get("id")?,
-                    split_id: r.get("split_id")?,
-                    name: r.get("name")?,
-                    emoji: r.get("emoji")?,
-                    upi_id: r.get("upi_id")?,
+                    id: r["id"].as_str().unwrap_or("").to_string(),
+                    split_id: r["split_id"].as_str().unwrap_or("").to_string(),
+                    name: r["name"].as_str().unwrap_or("").to_string(),
+                    emoji: r["emoji"].as_str().unwrap_or("").to_string(),
+                    upi_id: r["upi_id"].as_str().map(|s| s.to_string()),
                     is_guest: is_guest != 0,
                 })
             })
@@ -105,43 +104,43 @@ pub async fn get_split_detail(db: &D1Database, split_id: &str) -> Result<SplitDe
     };
 
     let items = {
-        let results = db
+        let results: Vec<serde_json::Value> = db
             .prepare("SELECT id, split_id, name, price, quantity, emoji FROM items WHERE split_id = ?1 ORDER BY rowid")
             .bind(&[split_id.into()])?
             .all()
             .await?
-            .results;
+            .results()?;
 
         results
             .into_iter()
             .map(|r| {
                 Ok(ItemRow {
-                    id: r.get("id")?,
-                    split_id: r.get("split_id")?,
-                    name: r.get("name")?,
-                    price: r.get("price")?,
-                    quantity: r.get("quantity")?,
-                    emoji: r.get("emoji")?,
+                    id: r["id"].as_str().unwrap_or("").to_string(),
+                    split_id: r["split_id"].as_str().unwrap_or("").to_string(),
+                    name: r["name"].as_str().unwrap_or("").to_string(),
+                    price: r["price"].as_i64().unwrap_or(0),
+                    quantity: r["quantity"].as_i64().unwrap_or(0),
+                    emoji: r["emoji"].as_str().unwrap_or("").to_string(),
                 })
             })
             .collect::<Result<Vec<_>>>()?
     };
 
     let assignments = {
-        let results = db
+        let results: Vec<serde_json::Value> = db
             .prepare("SELECT ia.item_id, ia.participant_id, ia.share_fraction FROM item_assignments ia JOIN items i ON i.id = ia.item_id WHERE i.split_id = ?1")
             .bind(&[split_id.into()])?
             .all()
             .await?
-            .results;
+            .results()?;
 
         results
             .into_iter()
             .map(|r| {
                 Ok(AssignmentRow {
-                    item_id: r.get("item_id")?,
-                    participant_id: r.get("participant_id")?,
-                    share_fraction: r.get("share_fraction")?,
+                    item_id: r["item_id"].as_str().unwrap_or("").to_string(),
+                    participant_id: r["participant_id"].as_str().unwrap_or("").to_string(),
+                    share_fraction: r["share_fraction"].as_f64().unwrap_or(0.0),
                 })
             })
             .collect::<Result<Vec<_>>>()?
@@ -159,37 +158,37 @@ pub async fn get_summary(db: &D1Database, split_id: &str) -> Result<SplitSummary
     let row = db
         .prepare("SELECT name, restaurant, total_amount, tax, tip, guest_token FROM splits WHERE id = ?1")
         .bind(&[split_id.into()])?
-        .first::<D1Result>(None)
+        .first::<serde_json::Value>(None)
         .await?
         .ok_or_else(|| Error::RustError("Split not found".into()))?;
 
-    let split_name: String = row.get("name")?;
-    let restaurant: Option<String> = row.get("restaurant")?;
-    let total_amount: i64 = row.get("total_amount")?;
-    let tax: i64 = row.get("tax")?;
-    let tip: i64 = row.get("tip")?;
-    let guest_token: String = row.get("guest_token")?;
+    let split_name = row["name"].as_str().unwrap_or("").to_string();
+    let restaurant = row["restaurant"].as_str().map(|s| s.to_string());
+    let total_amount = row["total_amount"].as_i64().unwrap_or(0);
+    let tax = row["tax"].as_i64().unwrap_or(0);
+    let tip = row["tip"].as_i64().unwrap_or(0);
+    let guest_token = row["guest_token"].as_str().unwrap_or("").to_string();
 
     let total_subtotal: i64 = db
         .prepare("SELECT COALESCE(SUM(CAST(i.price * ia.share_fraction AS INTEGER)), 0) as total FROM items i JOIN item_assignments ia ON ia.item_id = i.id WHERE i.split_id = ?1")
         .bind(&[split_id.into()])?
-        .first::<D1Result>(None)
+        .first::<serde_json::Value>(None)
         .await?
-        .and_then(|r| r.get::<i64>("total").ok())
+        .and_then(|r| r["total"].as_i64())
         .unwrap_or(0);
 
-    let summary_results = db
+    let summary_results: Vec<serde_json::Value> = db
         .prepare("SELECT p.id, p.name, p.emoji, p.upi_id, COALESCE(SUM(CAST(i.price * ia.share_fraction AS INTEGER)), 0) as subtotal, GROUP_CONCAT(i.name, ', ') as item_names FROM participants p LEFT JOIN item_assignments ia ON ia.participant_id = p.id LEFT JOIN items i ON i.id = ia.item_id AND i.split_id = ?1 WHERE p.split_id = ?1 GROUP BY p.id, p.name, p.emoji, p.upi_id ORDER BY p.rowid")
         .bind(&[split_id.into(), split_id.into()])?
         .all()
         .await?
-        .results;
+        .results()?;
 
     let mut summaries = Vec::with_capacity(summary_results.len());
 
     for r in summary_results {
-        let subtotal: i64 = r.get("subtotal")?;
-        let item_names_str: String = r.get::<String>("item_names").unwrap_or_default();
+        let subtotal = r["subtotal"].as_i64().unwrap_or(0);
+        let item_names_str = r["item_names"].as_str().unwrap_or("");
 
         let fraction = if total_subtotal > 0 {
             subtotal as f64 / total_subtotal as f64
@@ -207,10 +206,10 @@ pub async fn get_summary(db: &D1Database, split_id: &str) -> Result<SplitSummary
         };
 
         summaries.push(PersonSummary {
-            participant_id: r.get("id")?,
-            participant_name: r.get("name")?,
-            participant_emoji: r.get("emoji")?,
-            upi_id: r.get("upi_id")?,
+            participant_id: r["id"].as_str().unwrap_or("").to_string(),
+            participant_name: r["name"].as_str().unwrap_or("").to_string(),
+            participant_emoji: r["emoji"].as_str().unwrap_or("").to_string(),
+            upi_id: r["upi_id"].as_str().map(|s| s.to_string()),
             subtotal,
             tax_share,
             tip_share,
@@ -236,7 +235,7 @@ pub async fn get_summary(db: &D1Database, split_id: &str) -> Result<SplitSummary
 
 pub async fn assign_item(
     db: &D1Database,
-    split_id: &str,
+    _split_id: &str,
     item_id: &str,
     participant_ids: &[String],
 ) -> Result<()> {
@@ -338,20 +337,20 @@ async fn recalculate_total(db: &D1Database, split_id: &str) -> Result<()> {
     let subtotal: i64 = db
         .prepare("SELECT COALESCE(SUM(price * quantity), 0) as total FROM items WHERE split_id = ?1")
         .bind(&[split_id.into()])?
-        .first::<D1Result>(None)
+        .first::<serde_json::Value>(None)
         .await?
-        .and_then(|r| r.get::<i64>("total").ok())
+        .and_then(|r| r["total"].as_i64())
         .unwrap_or(0);
 
     let split_row = db
         .prepare("SELECT tax, tip FROM splits WHERE id = ?1")
         .bind(&[split_id.into()])?
-        .first::<D1Result>(None)
+        .first::<serde_json::Value>(None)
         .await?;
 
     let (tax, tip) = if let Some(r) = split_row {
-        let tax: i64 = r.get("tax").unwrap_or(0);
-        let tip: i64 = r.get("tip").unwrap_or(0);
+        let tax = r["tax"].as_i64().unwrap_or(0);
+        let tip = r["tip"].as_i64().unwrap_or(0);
         (tax, tip)
     } else {
         (0, 0)
@@ -373,33 +372,33 @@ pub async fn get_guest_view(db: &D1Database, token: &str) -> Result<serde_json::
     let row = db
         .prepare("SELECT id, name, restaurant, total_amount, tax, tip FROM splits WHERE guest_token = ?1")
         .bind(&[token.into()])?
-        .first::<D1Result>(None)
+        .first::<serde_json::Value>(None)
         .await?
         .ok_or_else(|| Error::RustError("Guest link not found or has expired".into()))?;
 
-    let split_id: String = row.get("id")?;
-    let name: String = row.get("name")?;
-    let restaurant: Option<String> = row.get("restaurant")?;
-    let total: i64 = row.get("total_amount")?;
-    let tax: i64 = row.get("tax")?;
-    let tip: i64 = row.get("tip")?;
+    let split_id = row["id"].as_str().unwrap_or("").to_string();
+    let name = row["name"].as_str().unwrap_or("").to_string();
+    let restaurant = row["restaurant"].as_str().map(|s| s.to_string());
+    let total = row["total_amount"].as_i64().unwrap_or(0);
+    let tax = row["tax"].as_i64().unwrap_or(0);
+    let tip = row["tip"].as_i64().unwrap_or(0);
 
-    let items_results = db
+    let items_results: Vec<serde_json::Value> = db
         .prepare("SELECT id, name, price, quantity, emoji FROM items WHERE split_id = ?1 ORDER BY rowid")
         .bind(&[split_id.clone().into()])?
         .all()
         .await?
-        .results;
+        .results()?;
 
     let items: Vec<serde_json::Value> = items_results
         .into_iter()
         .filter_map(|r| {
             Some(serde_json::json!({
-                "id": r.get::<String>("id").ok()?,
-                "name": r.get::<String>("name").ok()?,
-                "price": r.get::<i64>("price").ok()?,
-                "quantity": r.get::<i64>("quantity").ok()?,
-                "emoji": r.get::<String>("emoji").ok()?,
+                "id": r["id"].as_str()?,
+                "name": r["name"].as_str()?,
+                "price": r["price"].as_i64()?,
+                "quantity": r["quantity"].as_i64()?,
+                "emoji": r["emoji"].as_str()?,
             }))
         })
         .collect();
@@ -407,14 +406,14 @@ pub async fn get_guest_view(db: &D1Database, token: &str) -> Result<serde_json::
     let host = db
         .prepare("SELECT name, emoji, upi_id FROM participants WHERE split_id = ?1 ORDER BY rowid LIMIT 1")
         .bind(&[split_id.clone().into()])?
-        .first::<D1Result>(None)
+        .first::<serde_json::Value>(None)
         .await?;
 
     let (host_name, host_emoji, host_upi) = match host {
         Some(r) => {
-            let n: String = r.get("name").unwrap_or_else(|_| "Host".into());
-            let e: String = r.get("emoji").unwrap_or_else(|_| "😊".into());
-            let u: Option<String> = r.get("upi_id").ok();
+            let n = r["name"].as_str().unwrap_or("Host").to_string();
+            let e = r["emoji"].as_str().unwrap_or("😊").to_string();
+            let u = r["upi_id"].as_str().map(|s| s.to_string());
             (n, e, u)
         }
         None => ("Host".into(), "😊".into(), None),
@@ -456,13 +455,13 @@ pub async fn guest_pay(
     let row = db
         .prepare("SELECT s.id, p_upi.upi_id, p_upi.id as pid FROM splits s LEFT JOIN participants p_upi ON p_upi.split_id = s.id WHERE s.guest_token = ?1 ORDER BY p_upi.rowid LIMIT 1")
         .bind(&[token.into()])?
-        .first::<D1Result>(None)
+        .first::<serde_json::Value>(None)
         .await?
         .ok_or_else(|| Error::RustError("Guest token not found".into()))?;
 
-    let split_id: String = row.get("id")?;
-    let host_upi: Option<String> = row.get("upi_id").ok();
-    let host_participant_id: Option<String> = row.get("pid").ok();
+    let split_id = row["id"].as_str().unwrap_or("").to_string();
+    let host_upi = row["upi_id"].as_str().map(|s| s.to_string());
+    let host_participant_id = row["pid"].as_str().map(|s| s.to_string());
 
     let from_participant_id = if let Some(ref pid) = body.participant_id {
         pid.clone()
@@ -470,11 +469,11 @@ pub async fn guest_pay(
         let existing = db
             .prepare("SELECT id FROM participants WHERE split_id = ?1 AND name = ?2 LIMIT 1")
             .bind(&[split_id.clone().into(), body.name.clone().into()])?
-            .first::<D1Result>(None)
+            .first::<serde_json::Value>(None)
             .await?;
 
         match existing {
-            Some(r) => r.get::<String>("id")?,
+            Some(r) => r["id"].as_str().unwrap_or("").to_string(),
             None => {
                 let pid = uuid::Uuid::new_v4().to_string();
                 db.prepare("INSERT INTO participants (id, split_id, name, emoji, upi_id, is_guest) VALUES (?1, ?2, ?3, '👤', NULL, 1)")
@@ -511,27 +510,27 @@ pub async fn guest_pay(
 }
 
 pub async fn get_payments(db: &D1Database, split_id: &str) -> Result<serde_json::Value> {
-    let results = db
+    let results: Vec<serde_json::Value> = db
         .prepare("SELECT p.id, p.split_id, p.from_participant, prt.name, prt.emoji, p.to_participant, p.amount, p.status, p.created_at, p.confirmed_at FROM payments p LEFT JOIN participants prt ON prt.id = p.from_participant WHERE p.split_id = ?1 ORDER BY p.created_at DESC")
         .bind(&[split_id.into()])?
         .all()
         .await?
-        .results;
+        .results()?;
 
     let payments: Vec<serde_json::Value> = results
         .into_iter()
         .map(|p| {
             serde_json::json!({
-                "id": p.get::<String>("id").unwrap_or_default(),
-                "split_id": p.get::<String>("split_id").unwrap_or_default(),
-                "from_participant": p.get::<String>("from_participant").unwrap_or_default(),
-                "from_name": p.get::<String>("name").unwrap_or_else(|_| "Guest".into()),
-                "from_emoji": p.get::<String>("emoji").unwrap_or_else(|_| "👤".into()),
-                "to_participant": p.get::<String>("to_participant").unwrap_or_default(),
-                "amount": p.get::<i64>("amount").unwrap_or(0),
-                "status": p.get::<String>("status").unwrap_or_default(),
-                "created_at": p.get::<String>("created_at").unwrap_or_default(),
-                "confirmed_at": p.get::<String>("confirmed_at").ok(),
+                "id": p["id"].as_str().unwrap_or_default(),
+                "split_id": p["split_id"].as_str().unwrap_or_default(),
+                "from_participant": p["from_participant"].as_str().unwrap_or_default(),
+                "from_name": p["name"].as_str().unwrap_or("Guest"),
+                "from_emoji": p["emoji"].as_str().unwrap_or("👤"),
+                "to_participant": p["to_participant"].as_str().unwrap_or_default(),
+                "amount": p["amount"].as_i64().unwrap_or(0),
+                "status": p["status"].as_str().unwrap_or_default(),
+                "created_at": p["created_at"].as_str().unwrap_or_default(),
+                "confirmed_at": p["confirmed_at"].as_str().map(|s| s.to_string()),
             })
         })
         .collect();
@@ -545,13 +544,17 @@ pub async fn confirm_payment(
     payment_id: &str,
     guest_token: &str,
 ) -> Result<serde_json::Value> {
-    let stored_token = db
+    let row = db
         .prepare("SELECT guest_token FROM splits WHERE id = ?1")
         .bind(&[split_id.into()])?
-        .first::<D1Result>(None)
+        .first::<serde_json::Value>(None)
         .await?
-        .ok_or_else(|| Error::RustError(format!("Split '{}' not found", split_id)))?
-        .get::<String>("guest_token")?;
+        .ok_or_else(|| Error::RustError(format!("Split '{}' not found", split_id)))?;
+
+    let stored_token = row["guest_token"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
 
     if guest_token != stored_token {
         return Err(Error::RustError(
@@ -581,8 +584,8 @@ fn sanitize_upi_id(upi: &str) -> String {
 pub async fn health(db: &D1Database) -> Result<serde_json::Value> {
     let db_ok = db
         .prepare("SELECT 1")
-        .bind(&[] as &[D1Value])
-        .and_then(|s| s.first::<D1Result>(None))
+        .bind(&[])?
+        .first::<serde_json::Value>(None)
         .await
         .is_ok();
 

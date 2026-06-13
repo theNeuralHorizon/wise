@@ -1,4 +1,5 @@
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
+use wasm_bindgen::JsValue;
 use worker::*;
 
 use crate::models::*;
@@ -25,16 +26,15 @@ Rules:
 - If tax/tip not shown, use 0"#;
 
 pub async fn parse_receipt(
-    fetcher: &Fetcher,
     env: &Env,
-    r2: &R2Bucket,
+    r2: &Bucket,
     split_id: &str,
     image_bytes: &[u8],
 ) -> Result<ParsedReceipt> {
     // Try the Python AI service first (for local dev)
     if let Ok(ai_url) = std::env::var("AI_SERVICE_URL") {
         if !ai_url.is_empty() {
-            let mut headers = Headers::new();
+            let headers = Headers::new();
             headers.set("Content-Type", "application/octet-stream")?;
             let body = JsValue::from(image_bytes.to_vec());
             let req = Request::new_with_init(
@@ -44,8 +44,8 @@ pub async fn parse_receipt(
                     .with_headers(headers)
                     .with_body(Some(body)),
             )?;
-            if let Ok(resp) = fetcher.fetch_with_request(req).await {
-                if resp.ok().unwrap_or(false) {
+            if let Ok(mut resp) = Fetch::Request(req).send().await {
+                if resp.status_code() == 200 {
                     if let Ok(parsed) = resp.json::<ParsedReceipt>().await {
                         return Ok(parsed);
                     }
@@ -83,7 +83,7 @@ pub async fn parse_receipt(
         model, api_key
     );
 
-    let mut headers = Headers::new();
+    let headers = Headers::new();
     headers.set("Content-Type", "application/json")?;
 
     let req = Request::new_with_init(
@@ -91,10 +91,11 @@ pub async fn parse_receipt(
         RequestInit::new()
             .with_method(Method::Post)
             .with_headers(headers)
-            .with_body(Some(JsValue::from(payload.to_string()))),
+            .with_body(Some(JsValue::from_str(&payload.to_string()))),
     )?;
 
-    let resp = fetcher.fetch_with_request(req).await?;
+    let resp = Fetch::Request(req).send().await?;
+    let mut resp = resp;
     let gemini_resp: serde_json::Value = resp.json().await?;
 
     let raw_json = gemini_resp["candidates"][0]["content"]["parts"][0]["text"]
@@ -108,7 +109,7 @@ pub async fn parse_receipt(
 
     // Upload image to R2 for reference
     let r2_key = format!("receipts/{}/{}", split_id, chrono::Utc::now().timestamp());
-    r2.put(&r2_key, image_bytes.to_vec()).await?;
+    r2.put(&r2_key, image_bytes.to_vec()).execute().await?;
 
     Ok(parsed)
 }

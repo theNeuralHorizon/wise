@@ -1,23 +1,26 @@
 name = "wise-api"
-main = "src/lib.rs"
-compatibility_date = "2024-12-01"
+main = "build/worker/shim.mjs"
+compatibility_date = "2025-05-01"
 compatibility_flags = ["nodejs_compat"]
+
+[build]
+command = "cargo build --lib --release --target wasm32-unknown-unknown && node build.mjs"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "wise"
-database_id = "FILL_AFTER_CREATE"
+database_id = "98de12c1-07c5-40bb-ae6e-047049f5755f"
 
-[[r2_buckets]]
-binding = "RECEIPTS"
-bucket_name = "wise-receipts"
+# [[r2_buckets]]
+# binding = "RECEIPTS"
+# bucket_name = "wise-receipts"
 
 [durable_objects]
 bindings = [{ name = "SPLIT_SOCKET", class_name = "SplitSocket" }]
 
 [[migrations]]
 tag = "v1"
-new_classes = ["SplitSocket"]
+new_sqlite_classes = ["SplitSocket"]
 
 [vars]
 ENVIRONMENT = "production"
